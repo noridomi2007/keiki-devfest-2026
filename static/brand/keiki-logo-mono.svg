@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 72" width="280" height="72" fill="none">
+  <rect x="4" y="4" width="64" height="64" rx="16" fill="#111625" />
+  <g transform="translate(4 4) scale(1.777778)">
+    <path d="M10 8H14.2V15.25L10 20.5V8Z" fill="#FFFFFF" />
+    <path d="M10 22.375L21.5 8H26L10 28V22.375Z" fill="#FFFFFF" />
+    <path d="M11.45 28L14.2 24.56V28H11.45Z" fill="#FFFFFF" />
+    <path d="M16.6 21.85L19 18.85L26 28H21.3L16.6 21.85Z" fill="#FFFFFF" />
+  </g>
+  <text
+    x="84"
+    y="50"
+    fill="#111625"
+    font-family="'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, -apple-system, sans-serif"
+    font-size="42"
+    font-weight="800"
+    letter-spacing="-1.2"
+  >Keiki</text>
+</svg>

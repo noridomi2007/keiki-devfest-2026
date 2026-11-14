@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="680" viewBox="0 0 520 680">
+  <rect width="520" height="680" rx="24" fill="#0F4C81"/>
+  <rect x="20" y="24" width="480" height="632" rx="20" fill="#FFFFFF"/>
+  <circle cx="260" cy="86" r="32" fill="#0F7B5F"/>
+  <path d="M245 86 L256 97 L278 75" stroke="#FFFFFF" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <text x="260" y="142" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#0F7B5F">CHUYỂN KHOẢN THÀNH CÔNG (VietQR)</text>
+  <text x="260" y="182" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="#1B1F2A">540.000 VND</text>
+  <text x="260" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#64748B">10/11/2026 10:05</text>
+  <line x1="48" y1="236" x2="472" y2="236" stroke="#E2E8F0" stroke-width="2" stroke-dasharray="6,6"/>
+  <text x="52" y="274" font-family="Arial, sans-serif" font-size="14" fill="#64748B">Tài khoản thụ hưởng</text>
+  <text x="468" y="274" text-anchor="end" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1B1F2A">NPP BIA SONG HAN</text>
+  <text x="52" y="318" font-family="Arial, sans-serif" font-size="14" fill="#64748B">Ngân hàng nhận</text>
+  <text x="468" y="318" text-anchor="end" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#1B1F2A">Vietcombank — CN Đà Nẵng</text>
+  <text x="52" y="362" font-family="Arial, sans-serif" font-size="14" fill="#64748B">Số tài khoản</text>
+  <text x="468" y="362" text-anchor="end" font-family="Arial, sans-serif" font-size="15" fill="#1B1F2A">0041 0009 88xx (Đã ẩn danh)</text>
+  <text x="52" y="406" font-family="Arial, sans-serif" font-size="14" fill="#64748B">Nội dung chuyển tiền</text>
+  <text x="468" y="406" text-anchor="end" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#3B2FA8">Quan Ba Sau TT 2 thung Larue</text>
+  <text x="52" y="450" font-family="Arial, sans-serif" font-size="14" fill="#64748B">Mã giao dịch</text>
+  <text x="468" y="450" text-anchor="end" font-family="Arial, sans-serif" font-size="14" fill="#1B1F2A">FT26316889912</text>
+  <rect x="48" y="495" width="424" height="110" rx="12" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <text x="260" y="535" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#3B2FA8">BIÊN LAI CHUYỂN KHOẢN NGÂN HÀNG</text>
+  <text x="260" y="562" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#475569">Đối chiếu tự động bởi Keiki AI — GDG DevFest Miền Trung 2026</text>
+</svg>

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "appRoot": "D:\\GDG DevFest MienTrung 2026 - Keiki\\keiki-app\\frontend",
+  "repoRoot": "D:\\GDG DevFest MienTrung 2026 - Keiki",
+  "contextRoot": "D:\\GDG DevFest MienTrung 2026 - Keiki",
+  "sessionRoot": "D:\\GDG DevFest MienTrung 2026 - Keiki\\keiki-app\\frontend\\.impeccable\\live",
+  "productPath": "D:\\GDG DevFest MienTrung 2026 - Keiki\\PRODUCT.md",
+  "designPath": null,
+  "resolvedFrom": "target:keiki-app\\frontend"
+}

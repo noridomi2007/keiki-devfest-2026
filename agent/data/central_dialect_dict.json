@@ -1,0 +1,49 @@
+{
+  "time_expressions": {
+    "bữa ni": "today",
+    "hôm ni": "today",
+    "sáng ni": "today",
+    "trưa ni": "today",
+    "chiều ni": "today",
+    "tối ni": "today",
+    "hồi sáng": "today",
+    "hồi trưa": "today",
+    "bữa qua": "yesterday",
+    "hôm qua": "yesterday",
+    "chừ": "now"
+  },
+  "dialect_particles": [
+    "rứa",
+    "ứa",
+    "mô",
+    "tê",
+    "răng",
+    "nghe",
+    "hỉ",
+    "nè",
+    "hè"
+  ],
+  "currency_slang": {
+    "chục": 10000,
+    "xị": 100000,
+    "lít": 100000,
+    "củ": 1000000,
+    "chai": 1000000,
+    "k": 1000,
+    "ngàn": 1000,
+    "nghìn": 1000,
+    "triệu": 1000000,
+    "tr": 1000000
+  },
+  "common_items_danang": {
+    "mì quảng": {"category": "an_uong", "tax_group": "san_xuat_van_tai_an_uong"},
+    "bún bò": {"category": "an_uong", "tax_group": "san_xuat_van_tai_an_uong"},
+    "bánh tráng thịt heo": {"category": "an_uong", "tax_group": "san_xuat_van_tai_an_uong"},
+    "cà phê muối": {"category": "an_uong", "tax_group": "san_xuat_van_tai_an_uong"},
+    "nước mía": {"category": "an_uong", "tax_group": "san_xuat_van_tai_an_uong"},
+    "chả bò đà nẵng": {"category": "ban_hang", "tax_group": "phan_phoi_hang_hoa"},
+    "mực một nắng": {"category": "ban_hang", "tax_group": "phan_phoi_hang_hoa"},
+    "bia larue": {"category": "nhap_hang", "tax_group": "khong_tinh_thue"},
+    "cà phê hạt": {"category": "nhap_hang", "tax_group": "khong_tinh_thue"}
+  }
+}

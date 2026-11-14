@@ -1,0 +1,47 @@
+{
+  "circular": "Thông tư 152/2025/TT-BTC",
+  "books": {
+    "S1-HKD": {
+      "title": "SỔ CHI TIẾT DOANH THU BÁN HÀNG HÓA, DỊCH VỤ (Mẫu số S1-HKD)",
+      "columns": [
+        "Ngày tháng ghi sổ",
+        "Số hiệu chứng từ",
+        "Ngày tháng chứng từ",
+        "Diễn giải (Đối tác / Mặt hàng)",
+        "Phân phối, cung cấp hàng hóa (1,5%)",
+        "Sản xuất, vận tải, ăn uống (4,5%)",
+        "Dịch vụ, xây dựng không bao thầu (7%)",
+        "Hoạt động kinh doanh khác (3%)",
+        "Phương thức thanh toán",
+        "Chứng từ đính kèm"
+      ]
+    },
+    "S2-HKD": {
+      "title": "SỔ CHI TIẾT VẬT LIỆU, DỤNG CỤ, SẢN PHẨM, HÀNG HÓA (Mẫu số S2-HKD)",
+      "columns": [
+        "Ngày tháng",
+        "Số hiệu chứng từ",
+        "Nhà cung cấp",
+        "Tên vật liệu, hàng hóa",
+        "Số lượng nhập",
+        "Đơn giá (VND)",
+        "Thành tiền (VND)"
+      ]
+    },
+    "S3-HKD": {
+      "title": "SỔ CHI PHÍ SẢN XUẤT, KINH DOANH (Mẫu số S3-HKD)",
+      "columns": [
+        "Ngày tháng ghi sổ",
+        "Số hiệu chứng từ",
+        "Diễn giải chi phí",
+        "Mã số thuế NCC",
+        "Tổng số tiền chi (VND)",
+        "Chi phí nguyên vật liệu, hàng hóa",
+        "Chi phí nhân công / lương",
+        "Chi phí điện, nước, vận hành",
+        "Chi phí thuế, phí & khác",
+        "Chứng từ gốc đối chiếu"
+      ]
+    }
+  }
+}

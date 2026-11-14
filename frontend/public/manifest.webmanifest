@@ -1,0 +1,20 @@
+{
+  "name": "Keiki — Trợ lý AI Kế toán Doanh nghiệp & Hộ Kinh Doanh",
+  "short_name": "Keiki Kế toán",
+  "description": "Ghi sổ kế toán tự nhiên trên điện thoại & máy tính theo Thông tư 152/2025/TT-BTC bằng chụp ảnh hóa đơn, dán màn hình chuyển khoản hoặc nói tiếng Việt.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F6F8FB",
+  "theme_color": "#2E2396",
+  "lang": "vi",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

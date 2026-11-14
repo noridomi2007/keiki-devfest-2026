@@ -1,0 +1,9 @@
+[
+  {"tax_code": "0401234567", "name": "Đại lý Cà phê & Nguyên liệu Minh Phát Đà Nẵng", "address": "128 Ông Ích Khiêm, Hải Châu, Đà Nẵng", "status": "dang_hoat_dong"},
+  {"tax_code": "0401988776", "name": "Nhà phân phối Bia & Nước giải khát Sông Hàn", "address": "45 Điện Biên Phủ, Thanh Khê, Đà Nẵng", "status": "dang_hoat_dong"},
+  {"tax_code": "0401555666", "name": "Công ty Thực phẩm Sạch Miền Trung", "address": "KCN Hòa Khánh, Liên Chiểu, Đà Nẵng", "status": "dang_hoat_dong"},
+  {"tax_code": "0401777888", "name": "Cơ sở Chả bò Bà Tâm Chợ Cồn", "address": "290 Hùng Vương, Hải Châu, Đà Nẵng", "status": "dang_hoat_dong"},
+  {"tax_code": "0401333444", "name": "Đại lý Gạo & Gia vị Hòa Cường", "address": "82 Núi Thành, Hải Châu, Đà Nẵng", "status": "dang_hoat_dong"},
+  {"tax_code": "0401666999", "name": "Công ty TNHH Bao bì Nhựa Sơn Trà", "address": "19 Ngô Quyền, Sơn Trà, Đà Nẵng", "status": "dang_hoat_dong"},
+  {"tax_code": "0401999000", "name": "Cửa hàng Vật tư Tổng hợp Ánh Dương", "address": "112 Nguyễn Văn Linh, Đà Nẵng", "status": "ngung_hoat_dong"}
+]

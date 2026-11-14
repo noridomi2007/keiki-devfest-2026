@@ -1,0 +1,295 @@
+{
+  "household": {
+    "id": "demo",
+    "name": "Cửa hàng Thương mại & Dịch vụ Minh Tâm",
+    "owner": "Nguyễn Minh Tâm",
+    "address": "142 Nguyễn Thị Minh Khai, TP. Hồ Chí Minh / Toàn quốc",
+    "tax_code": "0318899123"
+  },
+  "documents": [
+    {
+      "id": "doc_seed_01",
+      "household_id": "demo",
+      "kind": "image",
+      "mime_type": "image/svg+xml",
+      "sha256": "seed_sha_01_minhphat_paper",
+      "storage_path": "demo/doc_seed_01.svg",
+      "uploaded_at": "2026-11-12T01:10:00Z",
+      "preset_hint": "receipt_minhphat_900k"
+    },
+    {
+      "id": "doc_seed_02",
+      "household_id": "demo",
+      "kind": "transfer",
+      "mime_type": "image/svg+xml",
+      "sha256": "seed_sha_02_minhphat_vietqr",
+      "storage_path": "demo/doc_seed_02.svg",
+      "uploaded_at": "2026-11-12T01:25:00Z",
+      "preset_hint": "cross_transfer_900k"
+    },
+    {
+      "id": "doc_seed_03",
+      "household_id": "demo",
+      "kind": "image",
+      "mime_type": "image/svg+xml",
+      "sha256": "seed_sha_03_anomaly_1250k",
+      "storage_path": "demo/doc_seed_03.svg",
+      "uploaded_at": "2026-11-11T08:30:00Z",
+      "preset_hint": "anomaly_1250k"
+    },
+    {
+      "id": "doc_seed_04",
+      "household_id": "demo",
+      "kind": "image",
+      "mime_type": "image/svg+xml",
+      "sha256": "seed_sha_04_bia_songhan",
+      "storage_path": "demo/doc_seed_04.svg",
+      "uploaded_at": "2026-11-10T03:00:00Z",
+      "preset_hint": "receipt_bia_540k"
+    },
+    {
+      "id": "doc_seed_05",
+      "household_id": "demo",
+      "kind": "transfer",
+      "mime_type": "image/svg+xml",
+      "sha256": "seed_sha_05_bia_vietqr",
+      "storage_path": "demo/doc_seed_05.svg",
+      "uploaded_at": "2026-11-10T03:05:00Z",
+      "preset_hint": "transfer_bia_540k"
+    },
+    {
+      "id": "doc_seed_06",
+      "household_id": "demo",
+      "kind": "image",
+      "mime_type": "image/svg+xml",
+      "sha256": "seed_sha_06_chabo",
+      "storage_path": "demo/doc_seed_06.svg",
+      "uploaded_at": "2026-11-09T02:15:00Z",
+      "preset_hint": "receipt_chabo_560k"
+    }
+  ],
+  "transactions": [
+    {
+      "id": "txn_seed_01",
+      "household_id": "demo",
+      "document_id": "doc_seed_01",
+      "linked_document_ids": ["doc_seed_01"],
+      "duplicate_of_id": null,
+      "date": "2026-11-12",
+      "type": "expense",
+      "category": "nhap_hang",
+      "tax_group": "khong_tinh_thue",
+      "payment_method": "cash",
+      "amount_vnd": 900000,
+      "counterparty": "Nhà phân phối Nguyên liệu & Thực phẩm Minh Phát",
+      "tax_code": "0401234567",
+      "items": [
+        {"name": "Cà phê hạt 1kg", "quantity": 5, "unit_price_vnd": 180000, "line_total_vnd": 900000}
+      ],
+      "transcript": null,
+      "confidence": {"date": 0.99, "amount_vnd": 0.99, "counterparty": 0.96, "type": 0.99},
+      "status": "recorded",
+      "clarification_question": null,
+      "warnings": [],
+      "source": "agent",
+      "created_at": "2026-11-12T01:10:05Z",
+      "updated_at": "2026-11-12T01:10:05Z"
+    },
+    {
+      "id": "txn_seed_02",
+      "household_id": "demo",
+      "document_id": "doc_seed_02",
+      "linked_document_ids": ["doc_seed_02"],
+      "duplicate_of_id": "txn_seed_01",
+      "date": "2026-11-12",
+      "type": "expense",
+      "category": "nhap_hang",
+      "tax_group": "khong_tinh_thue",
+      "payment_method": "transfer",
+      "amount_vnd": 900000,
+      "counterparty": "Nhà phân phối Nguyên liệu & Thực phẩm Minh Phát",
+      "tax_code": "0401234567",
+      "items": [
+        {"name": "Chuyển khoản VietQR thanh toán 5kg Cà phê hạt", "quantity": 1, "unit_price_vnd": 900000, "line_total_vnd": 900000}
+      ],
+      "transcript": null,
+      "confidence": {"date": 0.99, "amount_vnd": 0.99, "counterparty": 0.95, "type": 0.98},
+      "status": "needs_review",
+      "clarification_question": "Anh/chị ơi, ảnh chuyển khoản VietQR 900.000 đ này trùng khớp với hóa đơn giấy của 'Nhà phân phối Nguyên liệu & Thực phẩm Minh Phát' cùng ngày 12/11/2026. Anh/chị muốn gộp ảnh chuyển khoản này vào hóa đơn gốc để tránh cộng sổ 2 lần không ạ?",
+      "warnings": [
+        {
+          "code": "CROSS_DUPLICATE",
+          "severity": "high",
+          "message": "Phát hiện ảnh chuyển khoản 900.000 đ trùng khớp với hóa đơn giấy 'Nhà phân phối Nguyên liệu & Thực phẩm Minh Phát' (2026-11-12). Có thể đây là thanh toán cho hóa đơn đó."
+        }
+      ],
+      "source": "agent",
+      "created_at": "2026-11-12T01:25:10Z",
+      "updated_at": "2026-11-12T01:25:10Z"
+    },
+    {
+      "id": "txn_seed_03",
+      "household_id": "demo",
+      "document_id": "doc_seed_03",
+      "linked_document_ids": ["doc_seed_03"],
+      "duplicate_of_id": null,
+      "date": "2026-11-11",
+      "type": "expense",
+      "category": "nhap_hang",
+      "tax_group": "khong_tinh_thue",
+      "payment_method": "cash",
+      "amount_vnd": 1250000,
+      "counterparty": "Nhà phân phối Nguyên liệu & Thực phẩm Minh Phát",
+      "tax_code": "0401234567",
+      "items": [
+        {"name": "Cà phê hạt 1kg", "quantity": 5, "unit_price_vnd": 250000, "line_total_vnd": 1250000}
+      ],
+      "transcript": null,
+      "confidence": {"date": 0.98, "amount_vnd": 0.97, "counterparty": 0.95, "type": 0.98},
+      "status": "needs_review",
+      "clarification_question": "Anh/chị ơi, Đơn giá 'Cà phê hạt 1kg' (250.000 đ) cao hơn 39% so với trung vị 4 lần nhập trước (180.000 đ). Anh/chị kiểm tra giúp đây là giá mới hay nhà cung cấp ghi nhầm ạ?",
+      "warnings": [
+        {
+          "code": "PRICE_ANOMALY",
+          "severity": "medium",
+          "message": "Đơn giá 'Cà phê hạt 1kg' (250.000 đ) cao hơn 39% so với trung vị 4 lần nhập trước (180.000 đ)."
+        }
+      ],
+      "source": "agent",
+      "created_at": "2026-11-11T08:30:10Z",
+      "updated_at": "2026-11-11T08:30:10Z"
+    },
+    {
+      "id": "txn_seed_04",
+      "household_id": "demo",
+      "document_id": null,
+      "linked_document_ids": [],
+      "duplicate_of_id": null,
+      "date": "2026-11-11",
+      "type": "revenue",
+      "category": "an_uong",
+      "tax_group": "san_xuat_van_tai_an_uong",
+      "payment_method": "cash",
+      "amount_vnd": 2450000,
+      "counterparty": "Doanh thu bán hàng & dịch vụ F&B trong ca sáng",
+      "tax_code": null,
+      "items": [
+        {"name": "Combo suất ăn & đồ uống (55 đơn)", "quantity": 55, "unit_price_vnd": 35000, "line_total_vnd": 1925000},
+        {"name": "Cà phê rang xay đóng gói (35 phần)", "quantity": 35, "unit_price_vnd": 15000, "line_total_vnd": 525000}
+      ],
+      "transcript": "Hôm nay tổng kết ca sáng bán 55 đơn hàng và 35 phần cà phê thu về 2 triệu 450 nghìn đồng.",
+      "confidence": {"date": 0.99, "amount_vnd": 0.98, "counterparty": 0.95, "type": 0.99},
+      "status": "recorded",
+      "clarification_question": null,
+      "warnings": [],
+      "source": "agent",
+      "created_at": "2026-11-11T05:20:00Z",
+      "updated_at": "2026-11-11T05:20:00Z"
+    },
+    {
+      "id": "txn_seed_05",
+      "household_id": "demo",
+      "document_id": "doc_seed_04",
+      "linked_document_ids": ["doc_seed_04", "doc_seed_05"],
+      "duplicate_of_id": null,
+      "date": "2026-11-10",
+      "type": "expense",
+      "category": "nhap_hang",
+      "tax_group": "khong_tinh_thue",
+      "payment_method": "transfer",
+      "amount_vnd": 540000,
+      "counterparty": "Nhà phân phối Nước giải khát & Thực phẩm",
+      "tax_code": "0401988776",
+      "items": [
+        {"name": "Nước giải khát đóng thùng (24 lon)", "quantity": 2, "unit_price_vnd": 270000, "line_total_vnd": 540000}
+      ],
+      "transcript": null,
+      "confidence": {"date": 0.99, "amount_vnd": 0.99, "counterparty": 0.97, "type": 0.99},
+      "status": "recorded",
+      "clarification_question": null,
+      "warnings": [],
+      "source": "agent",
+      "created_at": "2026-11-10T03:00:00Z",
+      "updated_at": "2026-11-10T03:05:30Z"
+    },
+    {
+      "id": "txn_seed_06",
+      "household_id": "demo",
+      "document_id": "doc_seed_06",
+      "linked_document_ids": ["doc_seed_06"],
+      "duplicate_of_id": null,
+      "date": "2026-11-09",
+      "type": "expense",
+      "category": "nhap_hang",
+      "tax_group": "khong_tinh_thue",
+      "payment_method": "cash",
+      "amount_vnd": 560000,
+      "counterparty": "Công ty TNHH Thực phẩm & Hàng tiêu dùng Việt",
+      "tax_code": "0401777888",
+      "items": [
+        {"name": "Thực phẩm chế biến đóng gói (1kg)", "quantity": 2, "unit_price_vnd": 280000, "line_total_vnd": 560000}
+      ],
+      "transcript": null,
+      "confidence": {"date": 0.98, "amount_vnd": 0.98, "counterparty": 0.95, "type": 0.99},
+      "status": "recorded",
+      "clarification_question": null,
+      "warnings": [],
+      "source": "agent",
+      "created_at": "2026-11-09T02:15:00Z",
+      "updated_at": "2026-11-09T02:15:00Z"
+    },
+    {
+      "id": "txn_seed_07",
+      "household_id": "demo",
+      "document_id": null,
+      "linked_document_ids": [],
+      "duplicate_of_id": null,
+      "date": "2026-11-08",
+      "type": "revenue",
+      "category": "ban_hang",
+      "tax_group": "phan_phoi_hang_hoa",
+      "payment_method": "transfer",
+      "amount_vnd": 1850000,
+      "counterparty": "Xuất bán hàng hóa & thực phẩm đóng gói cho đại lý",
+      "tax_code": null,
+      "items": [
+        {"name": "Thực phẩm đóng gói loại 1", "quantity": 4, "unit_price_vnd": 350000, "line_total_vnd": 1400000},
+        {"name": "Cà phê rang mộc 500g", "quantity": 3, "unit_price_vnd": 150000, "line_total_vnd": 450000}
+      ],
+      "transcript": null,
+      "confidence": {"date": 0.99, "amount_vnd": 0.99, "counterparty": 0.96, "type": 0.99},
+      "status": "recorded",
+      "clarification_question": null,
+      "warnings": [],
+      "source": "agent",
+      "created_at": "2026-11-08T09:10:00Z",
+      "updated_at": "2026-11-08T09:10:00Z"
+    },
+    {
+      "id": "txn_seed_08",
+      "household_id": "demo",
+      "document_id": null,
+      "linked_document_ids": [],
+      "duplicate_of_id": null,
+      "date": "2026-11-06",
+      "type": "expense",
+      "category": "chi_phi_van_hanh",
+      "tax_group": "khong_tinh_thue",
+      "payment_method": "transfer",
+      "amount_vnd": 680000,
+      "counterparty": "Thanh toán hóa đơn Điện & Nước kinh doanh tháng 11",
+      "tax_code": "0400101394",
+      "items": [
+        {"name": "Tiền điện nước cơ sở kinh doanh", "quantity": 1, "unit_price_vnd": 680000, "line_total_vnd": 680000}
+      ],
+      "transcript": null,
+      "confidence": {"date": 0.99, "amount_vnd": 0.99, "counterparty": 0.98, "type": 0.99},
+      "status": "recorded",
+      "clarification_question": null,
+      "warnings": [],
+      "source": "agent",
+      "created_at": "2026-11-06T04:00:00Z",
+      "updated_at": "2026-11-06T04:00:00Z"
+    }
+  ]
+}

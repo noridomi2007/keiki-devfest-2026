@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="680" viewBox="0 0 560 680">
+  <rect width="560" height="680" fill="#EAE6DF"/>
+  <rect x="28" y="24" width="504" height="632" fill="#FFFDF9" stroke="#D5DCE8" stroke-width="2"/>
+  <text x="280" y="68" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#1B1F2A">CƠ SỞ CHẢ BÒ BÀ TÂM CHỢ CỒN</text>
+  <text x="280" y="94" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#475569">ĐC: Quận Hải Châu, TP. Đà Nẵng — MST: 0401777888</text>
+  <line x1="56" y1="114" x2="504" y2="114" stroke="#94A3B8" stroke-width="1.5"/>
+  <text x="280" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#3B2FA8">PHIẾU GIAO HÀNG CHỢ CỒN — ĐÀ NẴNG</text>
+  <text x="280" y="176" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-style="italic" fill="#475569">Ngày 09 tháng 11 năm 2026</text>
+  <text x="56" y="212" font-family="Arial, sans-serif" font-size="15" fill="#1B1F2A">Khách hàng: <tspan font-weight="bold">Quán Mì Quảng &amp; Tạp hóa Bà Sáu (Hải Châu, ĐN)</tspan></text>
+  <rect x="56" y="236" width="448" height="38" fill="#F1F5F9" stroke="#CBD5E1"/>
+  <text x="68" y="260" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#1B1F2A">Tên mặt hàng</text>
+  <text x="290" y="260" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#1B1F2A">SL</text>
+  <text x="345" y="260" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#1B1F2A">Đơn giá</text>
+  <text x="492" y="260" text-anchor="end" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#1B1F2A">Thành tiền</text>
+  <rect x="56" y="274" width="448" height="54" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text x="68" y="306" font-family="Arial, sans-serif" font-size="15" fill="#1B1F2A">Chả bò Đà Nẵng loại 1 (kg)</text>
+  <text x="295" y="306" font-family="Arial, sans-serif" font-size="15" fill="#1B1F2A">2</text>
+  <text x="345" y="306" font-family="Arial, sans-serif" font-size="15" fill="#1B1F2A">280.000</text>
+  <text x="492" y="306" text-anchor="end" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#1B1F2A">560.000 đ</text>
+  <rect x="56" y="360" width="448" height="56" fill="#FEF9C3" stroke="#FDE047" stroke-width="1.5"/>
+  <text x="72" y="395" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#1B1F2A">TỔNG CỘNG THANH TOÁN:</text>
+  <text x="490" y="395" text-anchor="end" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#C62828">560.000 đ</text>
+  <text x="140" y="480" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#475569">Người mua hàng</text>
+  <text x="420" y="480" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#475569">Người lập phiếu</text>
+  <text x="420" y="545" text-anchor="middle" font-family="Georgia, serif" font-size="18" font-style="italic" fill="#3B2FA8">Minh Phát</text>
+</svg>

@@ -1,0 +1,290 @@
+/* Editorial & Ledger Precision Motion Utilities for Keiki */
+
+.notebook-ledger {
+  background-color: #FFFEF9;
+  background-image:
+    linear-gradient(90deg, transparent 58px, rgba(185, 28, 28, 0.16) 58px, rgba(185, 28, 28, 0.16) 59px, transparent 59px),
+    linear-gradient(to bottom, transparent 31px, rgba(213, 220, 232, 0.55) 32px);
+  background-size: 100% 32px;
+}
+
+@media (max-width: 639px) {
+  .notebook-ledger {
+    background-image:
+      linear-gradient(90deg, transparent 16px, rgba(185, 28, 28, 0.16) 16px, rgba(185, 28, 28, 0.16) 17px, transparent 17px),
+      linear-gradient(to bottom, transparent 31px, rgba(213, 220, 232, 0.55) 32px);
+  }
+}
+
+.mobile-preview-frame .notebook-ledger {
+  background-image:
+    linear-gradient(90deg, transparent 16px, rgba(185, 28, 28, 0.16) 16px, rgba(185, 28, 28, 0.16) 17px, transparent 17px),
+    linear-gradient(to bottom, transparent 31px, rgba(213, 220, 232, 0.55) 32px);
+}
+
+.reveal-block {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal-block.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.surface-lift {
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.surface-lift:hover {
+  transform: translateY(-2px);
+}
+
+@keyframes auditStepEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.audit-step-enter {
+  animation: auditStepEnter 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes stampDrop {
+  0% {
+    opacity: 0;
+    transform: scale(1.22) rotate(-8deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(0.97) rotate(-4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-5deg);
+  }
+}
+
+.stamp-drop {
+  animation: stampDrop 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes pulseRing {
+  0%, 100% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(1.18);
+  }
+}
+
+.audit-live-dot {
+  animation: pulseRing 1.6s ease-in-out infinite;
+}
+
+@keyframes signalDash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.signal-flow-line {
+  stroke-dasharray: 6 6;
+  animation: signalDash 1.4s linear infinite;
+}
+
+/* Rich Dynamic Motion & Visual Depth Utilities */
+.dot-matrix-bg {
+  background-image: radial-gradient(rgba(46, 35, 150, 0.12) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.glass-surface {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+@keyframes auroraDrift {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate3d(28px, -18px, 0) scale(1.06) rotate(4deg);
+  }
+  66% {
+    transform: translate3d(-20px, 16px, 0) scale(0.96) rotate(-3deg);
+  }
+}
+
+.aurora-orb {
+  animation: auroraDrift 14s ease-in-out infinite;
+  will-change: transform;
+}
+
+.aurora-orb-delay {
+  animation: auroraDrift 18s ease-in-out -6s infinite;
+  will-change: transform;
+}
+
+@keyframes shimmerSweep {
+  0% {
+    transform: translateX(-140%) skewX(-22deg);
+  }
+  60%, 100% {
+    transform: translateX(240%) skewX(-22deg);
+  }
+}
+
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.34),
+    transparent
+  );
+  animation: shimmerSweep 3.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes scanBeam {
+  0% {
+    top: -12%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.9;
+  }
+  85% {
+    opacity: 0.9;
+  }
+  100% {
+    top: 108%;
+    opacity: 0;
+  }
+}
+
+.scan-beam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 36px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(46, 35, 150, 0.14),
+    rgba(11, 110, 84, 0.28),
+    transparent
+  );
+  border-bottom: 1.5px solid rgba(46, 35, 150, 0.45);
+  animation: scanBeam 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+/* Editorial utility surfaces & reduced motion */
+
+@keyframes floatBob {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
+.float-bob {
+  animation: floatBob 4.2s ease-in-out infinite;
+}
+
+.float-bob-slow {
+  animation: floatBob 5.6s ease-in-out -1.8s infinite;
+}
+
+@keyframes wavePulse {
+  0%, 100% {
+    transform: scaleY(0.32);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.voice-bar {
+  transform-origin: bottom center;
+  animation: wavePulse 0.9s ease-in-out infinite;
+}
+
+.card-interactive {
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.24s ease;
+}
+
+.card-interactive:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 14px 30px -12px rgba(46, 35, 150, 0.16),
+    0 4px 12px -4px rgba(17, 22, 37, 0.08);
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Solid editorial ink emphasis */
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-block {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .surface-lift,
+  .surface-lift:hover,
+  .card-interactive,
+  .card-interactive:hover {
+    transform: none;
+    transition: none;
+  }
+  .audit-step-enter,
+  .stamp-drop,
+  .audit-live-dot,
+  .signal-flow-line,
+  .aurora-orb,
+  .aurora-orb-delay,
+  .btn-shimmer::after,
+  .scan-beam,
+  .float-bob,
+  .float-bob-slow,
+  .voice-bar {
+    animation: none !important;
+  }
+}

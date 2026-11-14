@@ -1,0 +1,16 @@
+.git
+.gitignore
+.pytest_cache
+**/.pytest_cache
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.env
+.env.*
+!.env.example
+frontend/node_modules
+frontend/dist
+frontend/tsconfig.tsbuildinfo
+static
+backend/tests
+agent/tests

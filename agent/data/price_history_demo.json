@@ -1,0 +1,18 @@
+[
+  {"item_norm": "ca phe hat 1kg", "counterparty_norm": "dai ly minh phat da nang", "unit_price_vnd": 180000, "date": "2026-10-05"},
+  {"item_norm": "ca phe hat 1kg", "counterparty_norm": "dai ly minh phat da nang", "unit_price_vnd": 180000, "date": "2026-10-18"},
+  {"item_norm": "ca phe hat 1kg", "counterparty_norm": "dai ly minh phat da nang", "unit_price_vnd": 185000, "date": "2026-10-29"},
+  {"item_norm": "ca phe hat 1kg", "counterparty_norm": "dai ly minh phat da nang", "unit_price_vnd": 180000, "date": "2026-11-04"},
+  {"item_norm": "bia larue thung 24 lon", "counterparty_norm": "nha phan phoi bia song han", "unit_price_vnd": 270000, "date": "2026-10-10"},
+  {"item_norm": "bia larue thung 24 lon", "counterparty_norm": "nha phan phoi bia song han", "unit_price_vnd": 275000, "date": "2026-10-22"},
+  {"item_norm": "bia larue thung 24 lon", "counterparty_norm": "nha phan phoi bia song han", "unit_price_vnd": 270000, "date": "2026-11-02"},
+  {"item_norm": "duong kinh trang 1kg", "counterparty_norm": "dai ly gao gia vi hoa cuong", "unit_price_vnd": 26000, "date": "2026-10-12"},
+  {"item_norm": "duong kinh trang 1kg", "counterparty_norm": "dai ly gao gia vi hoa cuong", "unit_price_vnd": 26000, "date": "2026-10-25"},
+  {"item_norm": "duong kinh trang 1kg", "counterparty_norm": "dai ly gao gia vi hoa cuong", "unit_price_vnd": 27000, "date": "2026-11-03"},
+  {"item_norm": "dau an tuong an 5l", "counterparty_norm": "dai ly gao gia vi hoa cuong", "unit_price_vnd": 215000, "date": "2026-10-08"},
+  {"item_norm": "dau an tuong an 5l", "counterparty_norm": "dai ly gao gia vi hoa cuong", "unit_price_vnd": 215000, "date": "2026-10-20"},
+  {"item_norm": "dau an tuong an 5l", "counterparty_norm": "dai ly gao gia vi hoa cuong", "unit_price_vnd": 220000, "date": "2026-11-01"},
+  {"item_norm": "cha bo da nang 1kg", "counterparty_norm": "co so cha bo ba tam cho con", "unit_price_vnd": 280000, "date": "2026-10-14"},
+  {"item_norm": "cha bo da nang 1kg", "counterparty_norm": "co so cha bo ba tam cho con", "unit_price_vnd": 280000, "date": "2026-10-28"},
+  {"item_norm": "cha bo da nang 1kg", "counterparty_norm": "co so cha bo ba tam cho con", "unit_price_vnd": 285000, "date": "2026-11-05"}
+]
