@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { api } from '../api/endpoints';
 import { AgentTimeline } from '../components/AgentTimeline';
 import { useJobStream } from '../hooks/useJobStream';
@@ -12,7 +10,6 @@ import type { DocumentKind, Transaction } from '../types/contract';
 import { AppIcon } from '@/components/AppIcon';
 
 interface AddPageProps {
-  demoMode?: boolean;
   onTransactionCreated: (tx?: Transaction) => void;
   onOpenReviewTab: () => void;
   onOpenLedgerTab: () => void;
@@ -26,7 +23,6 @@ const VOICE_SUGGESTIONS = [
 ];
 
 export function AddPage({
-  demoMode = false,
   onTransactionCreated,
   onOpenReviewTab,
   onOpenLedgerTab,
@@ -175,19 +171,6 @@ export function AddPage({
     }
   };
 
-  const handleTriggerPreset = async (presetName: string, customTranscript?: string) => {
-    setErrorMsg(null);
-    setIsUploading(true);
-    try {
-      const res = await api.triggerPreset(presetName, customTranscript);
-      setActiveJobId(res.job_id);
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Lỗi chạy mẫu thử.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   return (
     <div className="space-y-5">
       <Card className="gap-0 py-0">
@@ -201,10 +184,6 @@ export function AddPage({
                 Dành cho mọi Doanh nghiệp Vừa &amp; Nhỏ (SME) và Hộ kinh doanh tại Việt Nam
               </p>
             </div>
-            <Badge variant="outline" className="hidden border-[#2E2396]/25 text-[#2E2396] sm:inline-flex">
-              <AppIcon name="verified_user" className="text-sm" />
-              Thông tư 152/2025/TT-BTC
-            </Badge>
           </div>
 
           {/* 3 Big Primary Action Buttons */}
@@ -439,85 +418,6 @@ export function AddPage({
               <AppIcon name="warning" className="shrink-0 text-lg" />
               <span>{errorMsg}</span>
             </div>
-          )}
-
-          {/* 1-Click Stage Demo Presets (visible only when DEMO_MODE=true) */}
-          {demoMode && (
-          <>
-          <Separator className="my-5" />
-          <div>
-            <p className="mb-2.5 flex items-center gap-1.5 text-xs font-bold text-[#475569]">
-              <AppIcon name="bolt" className="text-sm text-[#2E2396]" />
-              Kịch bản kiểm thử nhanh cho SME &amp; Hộ kinh doanh (Bấm 1 chạm):
-            </p>
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              <button
-                type="button"
-                disabled={isUploading || isRunning}
-                onClick={() => handleTriggerPreset('receipt_clean')}
-                className="card-interactive flex cursor-pointer items-center gap-2.5 rounded-xl border border-border bg-[#F6F8FB] px-3 py-2.5 text-left text-xs font-semibold text-[#111625] hover:border-[#0B6E54] hover:bg-emerald-50/50"
-              >
-                <AppIcon name="receipt_long" className="text-xl text-[#0B6E54]" />
-                <div className="min-w-0">
-                  <div className="font-bold">1. Hóa đơn giấy hợp lệ (900.000 đ)</div>
-                  <div className="text-xs text-[#475569]">
-                    Nhập 5kg Cà phê Minh Phát → Tự ghi &amp; đóng dấu
-                  </div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                disabled={isUploading || isRunning}
-                onClick={() => handleTriggerPreset('cross_transfer')}
-                className="card-interactive flex cursor-pointer items-center gap-2.5 rounded-xl border border-border bg-[#F6F8FB] px-3 py-2.5 text-left text-xs font-semibold text-[#111625] hover:border-[#B91C1C] hover:bg-red-50/40"
-              >
-                <AppIcon name="compare_arrows" className="text-xl text-[#B91C1C]" />
-                <div className="min-w-0">
-                  <div className="font-bold">2. Ảnh VietQR trùng chéo (900.000 đ)</div>
-                  <div className="text-xs text-[#475569]">
-                    Phát hiện CROSS_DUPLICATE &amp; hỏi gộp chứng từ
-                  </div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                disabled={isUploading || isRunning}
-                onClick={() =>
-                  handleTriggerPreset(
-                    'voice_vn',
-                    'Hôm nay xuất bán 20 đơn hàng bán lẻ tổng cộng 800 nghìn đồng, khách trả tiền mặt.'
-                  )
-                }
-                className="card-interactive flex cursor-pointer items-center gap-2.5 rounded-xl border border-border bg-[#F6F8FB] px-3 py-2.5 text-left text-xs font-semibold text-[#111625] hover:border-[#2E2396] hover:bg-indigo-50/50"
-              >
-                <AppIcon name="record_voice_over" className="text-xl text-[#2E2396]" />
-                <div className="min-w-0">
-                  <div className="font-bold">3. Ghi sổ bằng giọng nói ("20 đơn...")</div>
-                  <div className="text-xs text-[#475569]">
-                    Gemini Audio bóc tách &amp; phân loại thuế tự động
-                  </div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                disabled={isUploading || isRunning}
-                onClick={() => handleTriggerPreset('price_anomaly')}
-                className="card-interactive flex cursor-pointer items-center gap-2.5 rounded-xl border border-border bg-[#F6F8FB] px-3 py-2.5 text-left text-xs font-semibold text-[#111625] hover:border-amber-600 hover:bg-amber-50/50"
-              >
-                <AppIcon name="trending_up" className="text-xl text-[#92400E]" />
-                <div className="min-w-0">
-                  <div className="font-bold">4. Giá nhập tăng bất thường (+39%)</div>
-                  <div className="text-xs text-[#475569]">
-                    Đơn giá 250k vs lịch sử 180k → Chủ động hỏi lại
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
-          </>
           )}
 
           <div className="mt-4 flex items-start gap-2 rounded-xl bg-[#F6F8FB] p-3 text-xs text-[#475569]">

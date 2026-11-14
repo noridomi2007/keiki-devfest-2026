@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from backend.app.config import settings
 from backend.app.errors import ApiError
-from backend.app.services.seed_assets import generate_document_svg
 
 
 class StorageService:
@@ -62,11 +61,11 @@ class StorageService:
             except Exception:
                 pass
 
-        # Generate seed SVG on the fly if it's a seeded document
-        svg_bytes = generate_document_svg(preset_hint or storage_path)
-        local_file.parent.mkdir(parents=True, exist_ok=True)
-        local_file.write_bytes(svg_bytes)
-        return svg_bytes
+        raise ApiError(
+            status_code=404,
+            code="NOT_FOUND",
+            message="Không tìm thấy tệp chứng từ gốc.",
+        )
 
 
 storage_service = StorageService()

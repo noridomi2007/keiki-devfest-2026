@@ -15,8 +15,8 @@ from backend.app.models import (
     TransactionListResponse,
     TransactionPatchRequest,
 )
-from backend.app.repositories.memory import repo
-from backend.app.security import require_session
+from backend.app.repositories import repo
+from backend.app.core.security import require_session, validate_safe_id
 
 router = APIRouter(
     prefix="/api/transactions",
@@ -26,7 +26,8 @@ router = APIRouter(
 
 
 def _get_owned_transaction(tx_id: str, household_id: str) -> Transaction:
-    tx = repo.get_transaction(tx_id)
+    clean_id = validate_safe_id(tx_id, "tx_id")
+    tx = repo.get_transaction(clean_id)
     if not tx or tx.household_id != household_id:
         raise ApiError(status_code=404, code="NOT_FOUND", message="Không tìm thấy giao dịch.")
     return tx
@@ -69,7 +70,7 @@ async def list_transactions(
     to_date: str | None = Query(None, alias="to"),
     session: dict[str, Any] = Depends(require_session),
 ) -> TransactionListResponse:
-    hid = str(session.get("hid", "demo"))
+    hid = str(session.get("hid", ""))
     items = repo.list_transactions(
         household_id=hid,
         status=status,
@@ -85,7 +86,7 @@ async def create_manual_transaction(
     payload: TransactionCreateRequest,
     session: dict[str, Any] = Depends(require_session),
 ) -> Transaction:
-    hid = str(session.get("hid", "demo"))
+    hid = str(session.get("hid", ""))
     actor = str(session.get("owner") or "Chủ hộ")
     _ensure_period_unlocked(hid, payload.date)
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -141,7 +142,7 @@ async def patch_transaction(
     payload: TransactionPatchRequest,
     session: dict[str, Any] = Depends(require_session),
 ) -> Transaction:
-    hid = str(session.get("hid", "demo"))
+    hid = str(session.get("hid", ""))
     actor = str(session.get("owner") or "Chủ hộ")
     tx = _get_owned_transaction(tx_id, hid)
     _ensure_period_unlocked(hid, tx.date)
@@ -177,7 +178,7 @@ async def delete_transaction(
     tx_id: str,
     session: dict[str, Any] = Depends(require_session),
 ) -> Response:
-    hid = str(session.get("hid", "demo"))
+    hid = str(session.get("hid", ""))
     actor = str(session.get("owner") or "Chủ hộ")
     tx = _get_owned_transaction(tx_id, hid)
     _ensure_period_unlocked(hid, tx.date)
@@ -206,7 +207,7 @@ async def confirm_transaction(
     payload: ConfirmRequest | None = None,
     session: dict[str, Any] = Depends(require_session),
 ) -> Transaction:
-    hid = str(session.get("hid", "demo"))
+    hid = str(session.get("hid", ""))
     actor = str(session.get("owner") or "Chủ hộ")
     tx = _get_owned_transaction(tx_id, hid)
     _ensure_period_unlocked(hid, tx.date)
@@ -282,7 +283,7 @@ async def reject_transaction(
     payload: RejectRequest | None = None,
     session: dict[str, Any] = Depends(require_session),
 ) -> Transaction:
-    hid = str(session.get("hid", "demo"))
+    hid = str(session.get("hid", ""))
     actor = str(session.get("owner") or "Chủ hộ")
     tx = _get_owned_transaction(tx_id, hid)
     _ensure_period_unlocked(hid, tx.date)

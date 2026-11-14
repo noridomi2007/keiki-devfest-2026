@@ -60,7 +60,7 @@ const STAGES: TransformStage[] = [
     headline: 'Ghi vào đúng cuốn sổ S2d-HKD kèm ảnh gốc để dành cuối quý',
     summary:
       'Xong xuôi mới đóng dấu lưu sổ. Cuối tháng hay khi cần vay vốn ngân hàng, chỉ cần tải tệp Excel sạch sẽ kèm đủ ảnh hóa đơn đi kèm.',
-    badgeText: 'Sẵn sàng xuất sổ TT152',
+    badgeText: 'Sẵn sàng xuất sổ Excel',
     badgeTone: 'emerald',
   },
 ];

@@ -20,7 +20,7 @@ async def get_report(
     anchor: str = Query("2026-11-12"),
     session: dict[str, Any] = Depends(require_session),
 ) -> ReportResponse:
-    hid = str(session.get("hid", "demo"))
+    hid = str(session.get("hid", ""))
     return await build_report(
         repo=repo,
         household_id=hid,
@@ -34,7 +34,7 @@ async def lock_report_period(
     payload: PeriodLockRequest,
     session: dict[str, Any] = Depends(require_session),
 ) -> PeriodLockState:
-    hid = str(session.get("hid", "demo"))
+    hid = str(session.get("hid", ""))
     actor = str(session.get("owner") or "Chủ hộ")
     res = repo.set_period_lock(hid, payload.month, locked=True, actor=actor)
     return PeriodLockState.model_validate(res)
@@ -45,7 +45,7 @@ async def unlock_report_period(
     payload: PeriodLockRequest,
     session: dict[str, Any] = Depends(require_session),
 ) -> PeriodLockState:
-    hid = str(session.get("hid", "demo"))
+    hid = str(session.get("hid", ""))
     actor = str(session.get("owner") or "Chủ hộ")
     res = repo.set_period_lock(hid, payload.month, locked=False, actor=actor)
     return PeriodLockState.model_validate(res)

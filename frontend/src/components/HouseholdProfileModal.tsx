@@ -82,7 +82,7 @@ export function HouseholdProfileModal({
         revenue_tier: revenueTier,
         tax_method: taxMethod,
       });
-      setStatusMsg('Đã lưu hồ sơ hộ kinh doanh — tiêu đề sổ TT 152 sẽ tự động cập nhật.');
+      setStatusMsg('Đã lưu hồ sơ hộ kinh doanh — tiêu đề sổ kế toán sẽ tự động cập nhật.');
       onSaved();
     } catch (err) {
       setErrorMsg((err as Error).message || 'Không thể lưu hồ sơ cửa hàng.');
@@ -120,7 +120,7 @@ export function HouseholdProfileModal({
             Hồ sơ Hộ kinh doanh &amp; Chủ quyền Dữ liệu
           </DialogTitle>
           <DialogDescription className="text-xs text-[#475569]">
-            Thông tin này được in lên tiêu đề Mẫu S2a/S2c/S2d/S2e-HKD theo Thông tư 152/2025/TT-BTC.
+            Thông tin này được in tự động lên tiêu đề các mẫu sổ kế toán khi xuất tệp Excel.
           </DialogDescription>
         </DialogHeader>
 

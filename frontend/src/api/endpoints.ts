@@ -47,7 +47,7 @@ export interface HouseholdLoginPayload {
   address?: string;
   email?: string;
   picture?: string;
-  auth_method: 'google' | 'phone' | 'preset';
+  auth_method: 'google' | 'phone';
 }
 
 export interface HouseholdRegisterPayload {
@@ -142,14 +142,6 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ transcript }),
     }),
-
-  triggerPreset: (presetName: string, transcript?: string) => {
-    const q = transcript ? `?transcript=${encodeURIComponent(transcript)}` : '';
-    return requestJson<{ document_id: string; job_id: string }>(
-      `/api/documents/preset/${presetName}${q}`,
-      { method: 'POST' }
-    );
-  },
 
   getJob: (jobId: string) => requestJson<JobRecord>(`/api/jobs/${jobId}`),
 
@@ -247,9 +239,4 @@ export const api = {
     }),
 
   getHouseholdBackupUrl: () => '/api/household/backup',
-
-  resetDemo: () =>
-    requestJson<{ status: string; message: string }>('/api/demo/reset', {
-      method: 'POST',
-    }),
 };

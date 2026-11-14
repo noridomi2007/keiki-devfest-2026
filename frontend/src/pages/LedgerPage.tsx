@@ -176,7 +176,7 @@ export function LedgerPage({
           <div className="flex items-center gap-2">
             <AppIcon name="menu_book" className="text-[#2E2396]" />
             <h3 className="font-heading font-bold text-[#111625]">
-              Sổ Ghi Chép Thu Chi Hộ Kinh Doanh (TT 152/2025/TT-BTC)
+              Sổ Ghi Chép Thu Chi Hộ Kinh Doanh
             </h3>
           </div>
           <Badge variant="outline" className="font-mono text-xs text-[#475569]">
@@ -335,7 +335,7 @@ export function LedgerPage({
                   </div>
                 </div>
                 <div>
-                  <span className="text-xs text-[#475569]">Nhóm ngành Thông tư 152:</span>
+                  <span className="text-xs text-[#475569]">Nhóm ngành kinh doanh:</span>
                   <div className="font-semibold text-[#111625]">
                     {vi.taxGroupLabels[selectedTx.tax_group]}
                   </div>

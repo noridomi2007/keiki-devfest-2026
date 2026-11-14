@@ -26,7 +26,7 @@ class JobRunner:
     def start_job(
         self,
         doc_ref: DocumentRef,
-        household_id: str = "demo",
+        household_id: str = "",
     ) -> JobRecord:
         job_id = f"job_{uuid.uuid4().hex[:8]}"
         job = JobRecord(

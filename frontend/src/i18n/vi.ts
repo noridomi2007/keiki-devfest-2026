@@ -24,12 +24,11 @@ export const vi = {
     exportZip: 'Xuất trọn gói Sổ + Ảnh chứng từ gốc (.zip)',
     speakAloud: 'Nghe Keiki hỏi',
     largeText: 'Chữ to dễ đọc',
-    resetDemo: 'Đặt lại dữ liệu mẫu',
   },
   stampText: 'ĐÃ GHI SỔ',
   mergedBadge: 'Đủ 2 chứng từ (Hóa đơn + CK)',
   legalFooter:
-    'Keiki hỗ trợ các doanh nghiệp vừa và nhỏ (SME) & hộ kinh doanh tại Việt Nam ghi sổ kế toán theo Thông tư 152/2025/TT-BTC, không thay thế kế toán trưởng hay tự động nộp tờ khai thuế.',
+    'Keiki hỗ trợ doanh nghiệp vừa và nhỏ (SME) & hộ kinh doanh tại Việt Nam ghi chép sổ sách thu chi minh bạch, không thay thế kế toán trưởng hay tự động nộp tờ khai thuế.',
   taxGroupLabels: {
     phan_phoi_hang_hoa: 'Thương mại / Phân phối hàng hóa (Thuế 1,5%)',
     san_xuat_van_tai_an_uong: 'Sản xuất / Vận tải / F&B (Thuế 4,5%)',

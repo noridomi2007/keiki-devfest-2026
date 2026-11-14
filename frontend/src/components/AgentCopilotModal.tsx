@@ -48,7 +48,7 @@ export function AgentCopilotModal({
   const [turns, setTurns] = useState<ChatTurn[]>([
     {
       role: 'agent',
-      text: 'Chào anh/chị! Em là trợ lý sổ sách Keiki AI. Anh/chị có thể hỏi số liệu thu chi, tìm khoản chi lớn, kiểm tra ngưỡng Thông tư 152/2025 hoặc nhờ em gộp chứng từ nghi trùng.',
+      text: 'Chào anh/chị! Em là trợ lý sổ sách Keiki AI. Anh/chị có thể hỏi số liệu thu chi, tìm khoản chi lớn, kiểm tra ngưỡng doanh thu thuế hoặc nhờ em gộp chứng từ nghi trùng.',
     },
   ]);
 
@@ -97,7 +97,7 @@ export function AgentCopilotModal({
             Hỏi đáp &amp; Điều phối Keiki AI Agent (Function Calling)
           </DialogTitle>
           <DialogDescription className="text-xs text-[#475569]">
-            Agent gọi công cụ truy vấn sổ cái, tính ngưỡng Thông tư 152/2025/TT-BTC và thực thi thao
+            Agent gọi công cụ truy vấn sổ cái, tính toán nghĩa vụ thuế và thực thi thao
             tác gộp chứng từ có nhật ký kiểm toán.
           </DialogDescription>
         </DialogHeader>

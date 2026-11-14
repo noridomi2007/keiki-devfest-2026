@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import pytest
+from agent.extract import extract_from_image
 from agent.normalize import normalize_date, normalize_text, parse_vnd_amount
-from agent.schemas import ConfidenceScores, ExtractionResult, Item
+from agent.schemas import AgentSettings, ConfidenceScores, DocumentRef, ExtractionResult, Item, Transaction
 from agent.tools import (
     check_duplicate,
     classify_category_and_tax,
@@ -50,8 +51,45 @@ def test_validate_totals_detects_mismatch():
 
 
 @pytest.mark.asyncio
+async def test_extract_from_image_requires_api_key_no_hardcoded_fallback(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    doc = DocumentRef(
+        document_id="doc_real_01",
+        kind="image",
+        mime_type="image/jpeg",
+        data=b"\xff\xd8\xff\xe0\x00\x10JFIF_REAL_IMAGE",
+        sha256="sha_real_01",
+        filename="hoa_don_nha_hang.jpg",
+        preset_hint=None,
+    )
+    with pytest.raises(ValueError, match="GEMINI_API_KEY"):
+        await extract_from_image(doc, AgentSettings(gemini_api_key=None))
+
+
+@pytest.mark.asyncio
 async def test_cross_duplicate_and_price_anomaly():
     repo = MemoryRepo()
+    hid = "hh_test_01"
+    repo.save_transaction(
+        Transaction(
+            id="txn_orig_01",
+            household_id=hid,
+            document_id="doc_orig_01",
+            linked_document_ids=["doc_orig_01"],
+            date="2026-11-12",
+            type="expense",
+            category="nhap_hang",
+            tax_group="khong_tinh_thue",
+            payment_method="cash",
+            amount_vnd=900000,
+            counterparty="Nhà phân phối Cà phê & Nguyên liệu Minh Phát",
+            status="recorded",
+            source="agent",
+            created_at="2026-11-12T08:00:00Z",
+            updated_at="2026-11-12T08:00:00Z",
+        )
+    )
+
     # Test cross-modal duplicate: transfer screenshot matching existing 900,000 VND paper receipt on 2026-11-12
     ext_transfer = ExtractionResult(
         date="2026-11-12",
@@ -63,14 +101,14 @@ async def test_cross_duplicate_and_price_anomaly():
     dup_warnings, dup_id = await check_duplicate(
         ext=ext_transfer,
         repo=repo,
-        household_id="demo",
+        household_id=hid,
         doc_kind="transfer",
     )
     assert len(dup_warnings) == 1
     assert dup_warnings[0].code == "CROSS_DUPLICATE"
-    assert dup_id == "txn_seed_01"
+    assert dup_id == "txn_orig_01"
 
-    # Test price anomaly (>30% above 180,000 VND median)
+    # Test price anomaly (>30% above 180,000 VND median in reference price_history.json)
     ext_anomaly = ExtractionResult(
         date="2026-11-12",
         type="expense",
@@ -79,7 +117,7 @@ async def test_cross_duplicate_and_price_anomaly():
         items=[Item(name="Cà phê hạt 1kg", quantity=5, unit_price_vnd=250000, line_total_vnd=1250000)],
         confidence=ConfidenceScores(),
     )
-    price_warnings = await compare_price_history(ext_anomaly, repo=repo, household_id="demo")
+    price_warnings = await compare_price_history(ext_anomaly, repo=repo, household_id=hid)
     assert len(price_warnings) == 1
     assert price_warnings[0].code == "PRICE_ANOMALY"
 

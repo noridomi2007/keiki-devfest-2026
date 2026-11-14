@@ -6,17 +6,16 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 from agent.normalize import normalize_text
-from agent.schemas import AuditLogEntry, PricePoint, TaxCodeInfo, Transaction
+from agent.schemas import PricePoint, TaxCodeInfo, Transaction
 from backend.app.models import DocumentRecord, JobRecord
 
 
 AGENT_DATA_DIR = Path(__file__).resolve().parent.parent.parent.parent / "agent" / "data"
-SEED_FILE = Path(__file__).resolve().parent.parent / "fixtures" / "seed_danang.json"
 STATE_FILE = Path(__file__).resolve().parent.parent.parent / "data" / "keiki_runtime_state.json"
 
 
 class MemoryRepo:
-    """In-memory repository with atomic disk persistence, period locks, and pre-loaded Đà Nẵng seed data."""
+    """In-memory repository with atomic disk persistence and period locks."""
 
     MAX_HOUSEHOLDS = 5000
     MAX_USERS = 5000
@@ -35,10 +34,10 @@ class MemoryRepo:
         self.locked_periods: dict[str, dict[str, str]] = {}
         self.household_info: dict[str, str] = {}
         self._persistence_enabled: bool = True
-        self._load_seed_only()
+        self._load_reference_data()
         self._load_snapshot()
 
-    def _load_seed_only(self) -> None:
+    def _load_reference_data(self) -> None:
         self.documents.clear()
         self.transactions.clear()
         self.jobs.clear()
@@ -47,47 +46,19 @@ class MemoryRepo:
         self.households.clear()
         self.users.clear()
         self.locked_periods.clear()
+        self.household_info.clear()
 
-        # Load tax codes & price history from agent/data
-        tax_file = AGENT_DATA_DIR / "tax_codes_demo.json"
+        # Load reference tax codes & price history from agent/data
+        tax_file = AGENT_DATA_DIR / "tax_codes.json"
         if tax_file.exists():
             for row in json.loads(tax_file.read_text(encoding="utf-8")):
                 info = TaxCodeInfo.model_validate(row)
                 self.tax_codes[info.tax_code] = info
 
-        price_file = AGENT_DATA_DIR / "price_history_demo.json"
+        price_file = AGENT_DATA_DIR / "price_history.json"
         if price_file.exists():
             for row in json.loads(price_file.read_text(encoding="utf-8")):
                 self.price_points.append(PricePoint.model_validate(row))
-
-        # Load Đà Nẵng seed data
-        if SEED_FILE.exists():
-            seed = json.loads(SEED_FILE.read_text(encoding="utf-8"))
-            hh_seed = dict(seed.get("household", {}))
-            hh_seed.setdefault("business_sector", "Thương mại, dịch vụ & ăn uống")
-            hh_seed.setdefault("revenue_tier", "500m_to_3b")
-            hh_seed.setdefault("tax_method", "percentage_revenue")
-            self.household_info = dict(hh_seed)
-            self.households["demo"] = dict(hh_seed)
-            for doc_raw in seed.get("documents", []):
-                doc = DocumentRecord.model_validate(doc_raw)
-                self.documents[doc.id] = doc
-            for tx_raw in seed.get("transactions", []):
-                tx = Transaction.model_validate(tx_raw)
-                if not tx.audit_log:
-                    tx = tx.model_copy(
-                        update={
-                            "audit_log": [
-                                AuditLogEntry(
-                                    timestamp=tx.created_at,
-                                    action="created",
-                                    actor="Keiki AI Agent" if tx.source == "agent" else "Chủ hộ",
-                                    summary="Khởi tạo bút toán từ chứng từ gốc",
-                                )
-                            ]
-                        }
-                    )
-                self.transactions[tx.id] = tx
 
     def _load_snapshot(self) -> None:
         if not self._persistence_enabled or not STATE_FILE.exists():
@@ -96,8 +67,6 @@ class MemoryRepo:
             payload = json.loads(STATE_FILE.read_text(encoding="utf-8"))
             for hid, hh in (payload.get("households") or {}).items():
                 self.households[str(hid)] = dict(hh)
-                if hid == "demo":
-                    self.household_info = dict(hh)
             for phone, usr in (payload.get("users") or {}).items():
                 self.users[str(phone)] = dict(usr)
             for doc_id, doc_raw in (payload.get("documents") or {}).items():
@@ -107,7 +76,6 @@ class MemoryRepo:
             for lock_key, lock_info in (payload.get("locked_periods") or {}).items():
                 self.locked_periods[str(lock_key)] = dict(lock_info)
         except Exception:
-            # Keep clean seed state if snapshot cannot be read
             pass
 
     def _save_snapshot(self) -> None:
@@ -126,11 +94,11 @@ class MemoryRepo:
             tmp_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
             os.replace(tmp_path, STATE_FILE)
         except Exception:
-            # Read-only container environments should never fail API mutations
             pass
 
     def reset_to_seed(self) -> None:
-        self._load_seed_only()
+        """Reset all runtime state and reload only reference catalogs."""
+        self._load_reference_data()
         try:
             if STATE_FILE.exists():
                 STATE_FILE.unlink()
@@ -144,22 +112,18 @@ class MemoryRepo:
         for k in list(store.keys()):
             if protected_keys and k in protected_keys:
                 continue
-            if str(k).endswith("_seed_01") or str(k).endswith("_seed_02") or "_seed_" in str(k):
-                continue
             store.pop(k, None)
             if len(store) < max_items:
                 break
 
     def save_household(self, household_id: str, info: dict[str, str]) -> dict[str, str]:
         if household_id not in self.households:
-            self._evict_oldest_if_full(self.households, self.MAX_HOUSEHOLDS, {"demo"})
+            self._evict_oldest_if_full(self.households, self.MAX_HOUSEHOLDS)
         clean = dict(info)
         clean.setdefault("business_sector", "Thương mại & Dịch vụ tổng hợp")
         clean.setdefault("revenue_tier", "500m_to_3b")
         clean.setdefault("tax_method", "percentage_revenue")
         self.households[household_id] = clean
-        if household_id == "demo":
-            self.household_info = dict(clean)
         self._save_snapshot()
         return self.households[household_id]
 
@@ -236,7 +200,6 @@ class MemoryRepo:
                     if tx.document_id in matching_doc_ids or any(
                         lid in matching_doc_ids for lid in tx.linked_document_ids
                     ):
-                        # Only count if it's an older transaction
                         matches.append(tx)
 
         # 2. Same amount + within ±1 day (detects cross-modal duplicate between paper invoice and bank transfer!)
@@ -316,7 +279,7 @@ class MemoryRepo:
 
     def list_transactions(
         self,
-        household_id: str = "demo",
+        household_id: str = "",
         status: str | None = None,
         tx_type: str | None = None,
         date_from: str | None = None,

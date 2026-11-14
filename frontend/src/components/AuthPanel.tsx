@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -31,36 +30,6 @@ declare global {
   }
 }
 
-export const VIETNAM_SME_PROFILES: HouseholdLoginPayload[] = [
-  {
-    owner: 'Nguyễn Minh Tâm',
-    name: 'Cửa hàng Thương mại & Thực phẩm Minh Tâm',
-    phone: '0909 123 456',
-    tax_code: '0318899123',
-    address: '142 Nguyễn Thị Minh Khai, Quận 3, TP. Hồ Chí Minh',
-    email: 'minhtam.store.vn@gmail.com',
-    auth_method: 'preset',
-  },
-  {
-    owner: 'Trần Quốc Hoàng',
-    name: 'Công ty TNHH TM & Dịch vụ Hoàng Gia (SME)',
-    phone: '0912 888 999',
-    tax_code: '0107766554',
-    address: '86 Cầu Giấy, Quận Cầu Giấy, TP. Hà Nội',
-    email: 'hoanggia.sme.hn@gmail.com',
-    auth_method: 'preset',
-  },
-  {
-    owner: 'Lê Thị Mai',
-    name: 'Chuỗi Cà phê & Đặc sản Sông Hàn',
-    phone: '0905 456 789',
-    tax_code: '0406655443',
-    address: '68 Nguyễn Văn Linh, Quận Hải Châu, TP. Đà Nẵng',
-    email: 'songhan.coffee.vn@gmail.com',
-    auth_method: 'preset',
-  },
-];
-
 interface AuthPanelProps {
   onLoginSuccess: (payload: HouseholdLoginPayload, welcomeMsg: string) => void;
   variant?: 'page' | 'embedded';
@@ -68,15 +37,13 @@ interface AuthPanelProps {
 }
 
 /**
- * Shared authentication workspace supporting Google OAuth 2.0, Phone+scrypt Register/Login,
- * and server-gated demo preset login.
+ * Shared authentication workspace supporting Google OAuth 2.0 and Phone+scrypt Register/Login.
  */
 export function AuthPanel({
   onLoginSuccess,
   variant = 'page',
   initialMode = 'login',
 }: AuthPanelProps) {
-  const [demoMode, setDemoMode] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>(initialMode);
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -90,8 +57,6 @@ export function AuthPanel({
   const [googleClientId, setGoogleClientId] = useState('');
   const [showGoogleModal, setShowGoogleModal] = useState(false);
   const [clientIdInput, setClientIdInput] = useState('');
-  const [customGoogleEmail, setCustomGoogleEmail] = useState('');
-  const [customGoogleName, setCustomGoogleName] = useState('');
 
   useEffect(() => {
     setAuthMode(initialMode);
@@ -101,7 +66,6 @@ export function AuthPanel({
     api
       .getSettingsStatus()
       .then((st) => {
-        setDemoMode(Boolean(st.demo_mode));
         if (st.google_client_id) {
           setGoogleClientId(st.google_client_id);
           setClientIdInput(st.google_client_id);
@@ -278,17 +242,6 @@ export function AuthPanel({
     tokenClient.requestAccessToken();
   };
 
-  const handleClearClientId = async () => {
-    try {
-      await api.updateGoogleClientId('');
-      setGoogleClientId('');
-      setClientIdInput('');
-      setErrorMsg(null);
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Không thể xóa Google Client ID.');
-    }
-  };
-
   const handleGoogleButtonClick = () => {
     if (googleClientId) {
       launchRealGooglePopup(googleClientId);
@@ -303,44 +256,11 @@ export function AuthPanel({
     if (!cleaned) return;
     setErrorMsg(null);
     try {
-      if (demoMode) {
-        await api.updateGoogleClientId(cleaned);
-      }
+      await api.updateGoogleClientId(cleaned);
       setGoogleClientId(cleaned);
       launchRealGooglePopup(cleaned);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Không thể lưu Google Client ID.');
-    }
-  };
-
-  const handleQuickGoogleAccountSelect = async (email: string, name: string, shop?: string) => {
-    setLoading(true);
-    setErrorMsg(null);
-    try {
-      const res = await api.loginWithGoogle({
-        email,
-        name,
-        shop_name: shop || shopName || 'Cửa hàng Thương mại & Thực phẩm Minh Tâm',
-        tax_code: taxCode || '0318899123',
-        address: address || 'Việt Nam',
-      });
-      setShowGoogleModal(false);
-      onLoginSuccess(
-        {
-          owner: name,
-          name: shop || shopName,
-          phone,
-          tax_code: taxCode,
-          address,
-          email,
-          auth_method: 'google',
-        },
-        res.message
-      );
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Đăng nhập Google thất bại.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -361,11 +281,6 @@ export function AuthPanel({
             Sử dụng tài khoản Google xác minh hoặc Số điện thoại đã đăng ký.
           </p>
         </div>
-        {demoMode && (
-          <Badge variant="emerald" className="shrink-0">
-            Demo Mode
-          </Badge>
-        )}
       </div>
 
       {/* Primary Google Sign-In */}
@@ -397,39 +312,6 @@ export function AuthPanel({
           </svg>
           <span>Tiếp tục với tài khoản Google</span>
         </Button>
-
-        <div className="flex flex-wrap items-center justify-between gap-2 px-0.5 text-xs text-[#475569]">
-          <span className="inline-flex items-center gap-1">
-            {googleClientId ? (
-              <>
-                <AppIcon name="check_circle" className="text-sm text-[#0B6E54]" />
-                Đã cấu hình Google OAuth 2.0 Client ID
-              </>
-            ) : demoMode ? (
-              'Hỗ trợ OAuth 2.0 Popup hoặc Chọn nhanh Gmail mẫu'
-            ) : (
-              'Xác thực qua Google Identity OAuth 2.0'
-            )}
-          </span>
-          <div className="flex items-center gap-3">
-            {googleClientId && (
-              <button
-                type="button"
-                onClick={handleClearClientId}
-                className="cursor-pointer font-semibold text-[#B91C1C] hover:underline"
-              >
-                Xóa ID
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setShowGoogleModal(true)}
-              className="cursor-pointer font-semibold text-[#2E2396] hover:underline"
-            >
-              {googleClientId ? 'Đổi tài khoản / Cài đặt' : 'Cài đặt OAuth ID'}
-            </button>
-          </div>
-        </div>
       </div>
 
       {errorMsg && (
@@ -490,11 +372,9 @@ export function AuthPanel({
             </label>
             <Input
               type="password"
-              required={authMode === 'register' || !demoMode}
+              required
               minLength={authMode === 'register' ? 8 : undefined}
-              placeholder={
-                demoMode && authMode === 'login' ? 'Tùy chọn khi bật Demo' : 'Tối thiểu 8 ký tự'
-              }
+              placeholder="Tối thiểu 8 ký tự"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="mt-1 font-semibold"
@@ -571,33 +451,6 @@ export function AuthPanel({
           {authMode === 'register' ? 'Tạo tài khoản & Mở sổ' : 'Đăng nhập & Mở sổ'}
         </Button>
       </form>
-
-      {/* Compact Demo Presets when rendered inline on Landing */}
-      {variant === 'embedded' && demoMode && (
-        <div className="mt-5">
-          <Separator className="mb-4" />
-          <div className="mb-2.5 flex items-center gap-1.5 text-xs font-bold text-[#2E2396]">
-            <AppIcon name="bolt" className="text-sm" />
-            Vào nhanh hồ sơ mẫu (Demo)
-          </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {VIETNAM_SME_PROFILES.map((hh, idx) => (
-              <button
-                key={idx}
-                type="button"
-                disabled={loading}
-                onClick={() => handleLogin(hh)}
-                className="cursor-pointer rounded-xl border border-border bg-[#F6F8FB] px-3 py-2.5 text-left text-xs transition hover:border-[#2E2396] hover:bg-white"
-              >
-                <div className="truncate font-bold text-[#111625]">{hh.owner}</div>
-                <div className="truncate font-mono text-xs text-[#475569]">
-                  MST {hh.tax_code}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 
@@ -614,79 +467,39 @@ export function AuthPanel({
               </h1>
               <p className="mt-3 text-sm leading-relaxed text-[#475569]">
                 Chụp hóa đơn giấy, dán biên lai VietQR hoặc đọc giao dịch bằng giọng nói. Keiki
-                tách bóc chi tiết, đối chiếu chéo chống trùng lặp và lập trọn bộ sổ thuế S1a–S2e (TT 152/2025).
+                bóc tách chi tiết, đối chiếu chéo chống trùng lặp và tự động lên sổ thu chi – tồn kho rõ ràng.
               </p>
 
-              <div className="mt-3.5 flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="border-[#2E2396]/30 text-[#2E2396]">
-                  <AppIcon name="verified" className="text-sm" />
-                  Thông tư 152/2025/TT-BTC
-                </Badge>
+              <div className="mt-6 space-y-2.5 rounded-xl bg-white/95 p-4">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[#2E2396]">
+                  <AppIcon name="lock" className="text-base" />
+                  Chuẩn bảo mật sổ sách hộ kinh doanh
+                </div>
+                <ul className="space-y-2 text-xs leading-relaxed text-[#475569]">
+                  <li className="flex items-start gap-2">
+                    <AppIcon name="check" className="mt-0.5 text-sm text-[#0B6E54]" />
+                    <span>
+                      <strong className="text-[#111625]">Cô lập dữ liệu từng hộ:</strong> Chứng từ
+                      và sổ sách tách biệt hoàn toàn theo mã hộ / tài khoản đăng nhập.
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <AppIcon name="check" className="mt-0.5 text-sm text-[#0B6E54]" />
+                    <span>
+                      <strong className="text-[#111625]">Xác thực chặt chẽ:</strong> Google OAuth
+                      2.0 đã xác minh email hoặc SĐT + mật khẩu băm <code>scrypt</code> + Cookie{' '}
+                      <code>HttpOnly</code>.
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <AppIcon name="check" className="mt-0.5 text-sm text-[#0B6E54]" />
+                    <span>
+                      <strong className="text-[#111625]">Xuất Excel sạch công thức:</strong> Đầy
+                      đủ trọn bộ sổ thu chi, hàng hóa, dòng tiền và gói ZIP chứng từ phục vụ vay vốn ngân hàng.
+                    </span>
+                  </li>
+                </ul>
               </div>
-
-              {demoMode ? (
-                <div className="mt-6">
-                  <p className="mb-2.5 flex items-center gap-1.5 text-xs font-bold text-[#2E2396]">
-                    <AppIcon name="bolt" className="text-base" />
-                    Chọn nhanh hồ sơ mẫu (Bắc – Trung – Nam)
-                  </p>
-                  <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-white">
-                    {VIETNAM_SME_PROFILES.map((hh, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        disabled={loading}
-                        onClick={() => handleLogin(hh)}
-                        className="flex w-full cursor-pointer items-center justify-between gap-3 p-3.5 text-left transition hover:bg-[#F6F8FB]"
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#E8ECF6] font-mono text-xs font-bold text-[#2E2396]">
-                            {(hh.owner || 'K').slice(0, 1)}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="truncate font-bold text-[#111625]">{hh.name}</div>
-                            <div className="font-mono text-xs text-[#475569] tabular-nums">
-                              {hh.owner} • MST {hh.tax_code}
-                            </div>
-                          </div>
-                        </div>
-                        <AppIcon name="arrow_forward" className="shrink-0 text-xl text-[#2E2396]" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-6 space-y-2.5 rounded-xl bg-white/95 p-4">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#2E2396]">
-                    <AppIcon name="lock" className="text-base" />
-                    Chuẩn bảo mật sổ sách hộ kinh doanh
-                  </div>
-                  <ul className="space-y-2 text-xs leading-relaxed text-[#475569]">
-                    <li className="flex items-start gap-2">
-                      <AppIcon name="check" className="mt-0.5 text-sm text-[#0B6E54]" />
-                      <span>
-                        <strong className="text-[#111625]">Cô lập dữ liệu từng hộ:</strong> Chứng từ
-                        và sổ sách tách biệt hoàn toàn theo mã hộ / tài khoản đăng nhập.
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <AppIcon name="check" className="mt-0.5 text-sm text-[#0B6E54]" />
-                      <span>
-                        <strong className="text-[#111625]">Xác thực chặt chẽ:</strong> Google OAuth
-                        2.0 đã xác minh email hoặc SĐT + mật khẩu băm <code>scrypt</code> + Cookie{' '}
-                        <code>HttpOnly</code>.
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <AppIcon name="check" className="mt-0.5 text-sm text-[#0B6E54]" />
-                      <span>
-                        <strong className="text-[#111625]">Xuất Excel sạch công thức:</strong> Đầy
-                        đủ trọn bộ sổ S1a–S2e (TT 152/2025) và gói ZIP chứng từ phục vụ vay vốn ngân hàng.
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-              )}
             </div>
 
             <div className="mt-6 flex items-center gap-2 border-t border-border pt-4 text-xs text-[#475569] sm:ml-10">
@@ -702,7 +515,7 @@ export function AuthPanel({
         </Card>
       )}
 
-      {/* Google Account Chooser & OAuth 2.0 Client ID Modal */}
+      {/* Google OAuth 2.0 Client ID Modal */}
       <Dialog open={showGoogleModal} onOpenChange={setShowGoogleModal}>
         <DialogContent className="max-h-[90vh] overflow-y-auto p-0 sm:max-w-lg">
           <DialogHeader className="border-b border-border bg-[#F6F8FB] px-6 py-4">
@@ -737,74 +550,6 @@ export function AuthPanel({
           </DialogHeader>
 
           <div className="space-y-5 p-6">
-            {demoMode ? (
-              <div>
-                <p className="text-xs font-bold text-[#475569]">
-                  Chọn nhanh tài khoản Google mẫu (Demo Mode):
-                </p>
-                <div className="mt-2.5 divide-y divide-border overflow-hidden rounded-xl border border-border">
-                  {VIETNAM_SME_PROFILES.map((hh, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() =>
-                        handleQuickGoogleAccountSelect(hh.email!, hh.owner || 'Demo', hh.name)
-                      }
-                      className="flex w-full cursor-pointer items-center gap-3 bg-white p-3 text-left transition hover:bg-[#F6F8FB]"
-                    >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#4285F4] text-sm font-bold text-white">
-                        {(hh.owner || 'D').slice(-1)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-bold text-[#111625]">{hh.owner}</div>
-                        <div className="truncate text-xs text-[#475569]">{hh.email}</div>
-                      </div>
-                      <span className="text-xs font-semibold text-[#2E2396]">Chọn</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="mt-3 rounded-xl bg-[#F6F8FB] p-3.5">
-                  <div className="text-xs font-bold text-[#111625]">
-                    Hoặc nhập Gmail thử nghiệm:
-                  </div>
-                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <Input
-                      type="email"
-                      value={customGoogleEmail}
-                      onChange={(e) => setCustomGoogleEmail(e.target.value)}
-                      placeholder="tenban@gmail.com"
-                      className="h-9 bg-white text-xs"
-                    />
-                    <Input
-                      type="text"
-                      value={customGoogleName}
-                      onChange={(e) => setCustomGoogleName(e.target.value)}
-                      placeholder="Họ và tên"
-                      className="h-9 bg-white text-xs"
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={() =>
-                      handleQuickGoogleAccountSelect(customGoogleEmail, customGoogleName)
-                    }
-                    className="mt-2.5 h-9 w-full bg-[#4285F4] text-xs font-bold text-white hover:bg-blue-700"
-                  >
-                    Tiếp tục với {customGoogleEmail || 'Gmail này'}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-xl bg-amber-50 p-3.5 text-xs leading-relaxed text-[#92400E]">
-                <strong>Chế độ Production:</strong> Chỉ chấp nhận Google ID Token / Access Token hợp
-                lệ được cấp bởi Google OAuth 2.0 Client ID đã cấu hình. Hoặc sử dụng Số điện thoại
-                và Mật khẩu đã đăng ký.
-              </div>
-            )}
-
-            <Separator />
-
             <form onSubmit={handleSaveClientIdAndPopup} className="space-y-2">
               <p className="text-xs font-bold text-[#2E2396]">
                 Đăng nhập với Google OAuth 2.0 Client ID

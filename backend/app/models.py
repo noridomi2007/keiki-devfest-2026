@@ -17,7 +17,7 @@ from agent.schemas import (
 
 class DocumentRecord(BaseModel):
     id: str
-    household_id: str = "demo"
+    household_id: str = ""
     kind: DocumentKind
     mime_type: str
     sha256: str
@@ -37,7 +37,7 @@ class JobEventRecord(BaseModel):
 
 class JobRecord(BaseModel):
     id: str
-    household_id: str = "demo"
+    household_id: str = ""
     document_id: str
     status: Literal["queued", "running", "done", "error"] = "queued"
     events: list[JobEventRecord] = Field(default_factory=list)

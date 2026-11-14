@@ -11,14 +11,14 @@ export interface FloatingNavItem {
 interface FloatingNavPillProps {
   items: FloatingNavItem[];
   onNavigate: (id: string) => void;
-  onStartDemo: () => void;
+  onOpenAuth: () => void;
 }
 
 /**
  * Sticky obsidian floating dock inspired by Awwwards navigation ergonomics.
  * Appears on desktop once scrolled past the main Hero header and tracks active sections.
  */
-export function FloatingNavPill({ items, onNavigate, onStartDemo }: FloatingNavPillProps) {
+export function FloatingNavPill({ items, onNavigate, onOpenAuth }: FloatingNavPillProps) {
   const [visible, setVisible] = useState(false);
   const [activeId, setActiveId] = useState<string>(items[0]?.id || 'thu-nghiem');
 
@@ -107,7 +107,7 @@ export function FloatingNavPill({ items, onNavigate, onStartDemo }: FloatingNavP
 
           <button
             type="button"
-            onClick={onStartDemo}
+            onClick={onOpenAuth}
             className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-[#2E2396] px-4 text-xs font-bold text-white transition hover:bg-[#3A2EB5]"
           >
             <span>Mở sổ ngay</span>

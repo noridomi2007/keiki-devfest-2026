@@ -1,0 +1,38 @@
+node_modules/
+.venv/
+venv/
+__pycache__/
+dist/
+build/
+.next/
+static/
+.env
+.env.*
+*.env
+!.env.example
+
+# Secrets & Cloud Keys
+*service-account*.json
+*credentials*.json
+*.pem
+*.key
+
+# Python & TypeScript Caches
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.tsbuildinfo
+
+# Local Runtime Uploads & State Snapshots
+backend/data/uploads/
+backend/data/keiki_runtime_state.json*
+*.tmp
+*.log
+
+# OS & Editor
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.impeccable/

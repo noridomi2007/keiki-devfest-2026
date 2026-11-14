@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 from fastapi import APIRouter, Depends
 
+from agent.client import create_gemini_client, resolve_gemini_api_key
 from agent.normalize import normalize_text
 from agent.schemas import AuditLogEntry
 from backend.app.config import settings
@@ -253,7 +254,7 @@ async def chat_with_agent(
     payload: AgentChatRequest,
     session: dict[str, Any] = Depends(require_session),
 ) -> AgentChatResponse:
-    hid = str(session.get("hid", "demo"))
+    hid = str(session.get("hid", ""))
     actor = str(session.get("owner") or "Chủ hộ")
     month = (payload.month or "2026-11")[:7]
     clean_msg = sanitize_prompt_input(payload.message or "").strip()
@@ -305,14 +306,12 @@ async def chat_with_agent(
 
     # Synthesize natural Vietnamese answer grounded strictly in Python tool outputs
     reply = ""
-    api_key = settings.gemini_api_key or os.environ.get("GEMINI_API_KEY", "").strip()
+    api_key = resolve_gemini_api_key(settings.gemini_api_key)
     if api_key:
         try:
-            from google import genai
-
-            client = genai.Client(api_key=api_key)
+            client = create_gemini_client(api_key)
             prompt = (
-                "Bạn là Keiki AI Agent — Trợ lý kế toán Thông tư 152/2025/TT-BTC cho hộ kinh doanh Việt Nam. "
+                "Bạn là Keiki AI Agent — Trợ lý kế toán thông minh cho hộ kinh doanh và SME Việt Nam. "
                 "Hãy trả lời câu hỏi của chủ hộ bằng tiếng Việt súc tích, thân thiện, CHỈ dựa trên dữ liệu công cụ Python dưới đây "
                 "(tuyệt đối không bịa thêm số liệu):\n\n"
                 f"Câu hỏi: {clean_msg}\n\n"
@@ -376,7 +375,7 @@ async def chat_with_agent(
             lr = tl.get("loan_readiness") or {}
             if th:
                 parts.append(
-                    f"Chuẩn Thông tư 152/2025/TT-BTC: Doanh thu quy đổi năm ước {_fmt_vnd(th['annualized_revenue_vnd'])} "
+                    f"Ngưỡng doanh thu quy đổi năm ước tính: {_fmt_vnd(th['annualized_revenue_vnd'])} "
                     f"({th['status_label']}). Bộ sổ khuyến nghị: {tl['recommended_books']}."
                 )
             parts.append(
@@ -390,7 +389,7 @@ async def chat_with_agent(
         tool_calls=tool_calls,
         suggested_followups=[
             "Tháng này quán chi nhiều nhất cho khoản gì?",
-            "Kiểm tra ngưỡng doanh thu TT 152 và bộ sổ phải mở",
+            "Kiểm tra ngưỡng doanh thu năm và bộ sổ cần mở",
             "Kiểm tra chứng từ nghi trùng và gộp giúp tôi",
             "Đánh giá độ sẵn sàng hồ sơ vay vốn tháng này",
         ],

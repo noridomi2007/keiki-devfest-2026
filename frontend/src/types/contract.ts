@@ -200,7 +200,6 @@ export interface ReportResponse {
 
 export interface SettingsStatus {
   authenticated?: boolean;
-  demo_mode?: boolean;
   gemini_configured: boolean;
   gemini_model: string;
   google_client_id?: string;

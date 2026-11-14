@@ -6,7 +6,7 @@ import urllib.parse
 import httpx
 from fastapi import APIRouter, Depends, Query, Response
 
-from backend.app.security import require_session
+from backend.app.core.security import require_session
 
 router = APIRouter(
     prefix="/api/tts",
@@ -57,8 +57,8 @@ async def google_vietnamese_tts(
     text: str = Query(..., min_length=1, max_length=1000),
     _session: dict[str, Any] = Depends(require_session),
 ) -> Response:
-    """Authenticated Vietnamese TTS proxy returning MP3 audio."""
-    chunks = _split_vietnamese_chunks(text)
+    """Authenticated Vietnamese TTS proxy returning MP3 audio with redirect & chunk caps."""
+    chunks = _split_vietnamese_chunks(text)[:6]
     if not chunks:
         return Response(content=b"", media_type="audio/mpeg")
 
@@ -71,7 +71,7 @@ async def google_vietnamese_tts(
         "Referer": "https://translate.google.com/",
     }
 
-    async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, headers=headers) as client:
+    async with httpx.AsyncClient(timeout=8.0, follow_redirects=False, headers=headers) as client:
         for chunk in chunks:
             encoded_q = urllib.parse.quote(chunk)
             urls = [
@@ -81,7 +81,12 @@ async def google_vietnamese_tts(
             for url in urls:
                 try:
                     resp = await client.get(url)
-                    if resp.status_code == 200 and len(resp.content) > 256:
+                    ctype = resp.headers.get("content-type", "").lower()
+                    if (
+                        resp.status_code == 200
+                        and len(resp.content) > 256
+                        and ("audio" in ctype or "mpeg" in ctype)
+                    ):
                         audio_buffers.append(resp.content)
                         break
                 except Exception:

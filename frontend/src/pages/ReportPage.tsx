@@ -140,7 +140,7 @@ export function ReportPage() {
         <Card className="card-interactive relative gap-1 overflow-hidden p-4">
           <div className="absolute top-0 right-0 left-0 h-[3px] bg-gradient-to-r from-amber-500 to-orange-400" />
           <div className="flex items-center justify-between text-xs font-bold text-[#475569]">
-            <span>Thuế HKD ước tính (TT 152)</span>
+            <span>Thuế HKD ước tính</span>
             <AppIcon name="calculate" className="text-base text-[#92400E]" />
           </div>
           <div className="font-heading text-xl font-extrabold text-[#92400E] tabular-nums">
@@ -244,7 +244,7 @@ export function ReportPage() {
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-heading inline-flex items-center gap-1.5 text-lg font-bold text-[#111625]">
                 <AppIcon name="download" className="text-xl text-[#2E2396]" />
-                Xuất Sổ Kế Toán Thông tư 152/2025/TT-BTC &amp; Khóa kỳ
+                Xuất Sổ Kế Toán &amp; Khóa kỳ sổ
               </h3>
               {report.period_lock?.locked ? (
                 <Badge variant="emerald" className="font-bold">
@@ -332,7 +332,7 @@ export function ReportPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-heading inline-flex items-center gap-1.5 text-base font-bold text-[#111625]">
                     <AppIcon name="verified_user" className="text-lg text-[#0B6E54]" />
-                    Theo dõi Ngưỡng Doanh thu Thông tư 152/2025/TT-BTC
+                    Theo dõi Ngưỡng Doanh thu &amp; Nghĩa vụ Thuế
                   </h3>
                   <Badge variant="secondary" className="font-mono text-xs font-bold">
                     {th.regime_code}
@@ -388,7 +388,7 @@ export function ReportPage() {
       <Card className="min-w-0 gap-0 overflow-hidden py-0">
         <div className="border-b border-border bg-[#F6F8FB] px-4 py-3.5 sm:px-5">
           <h3 className="font-heading font-bold text-[#111625]">
-            Bảng phân bổ Doanh thu &amp; Thuế ước tính (Mẫu S2a-HKD — TT 152/2025/TT-BTC)
+            Bảng phân bổ Doanh thu &amp; Thuế ước tính (Mẫu S2a-HKD)
           </h3>
           <p className="mt-1 text-xs font-medium text-[#475569] sm:hidden">
             Vuốt ngang bảng nếu cần xem đầy đủ số liệu từng cột
@@ -432,7 +432,7 @@ export function ReportPage() {
         </Table>
         <div className="border-t border-border bg-[#F6F8FB] px-4 py-2.5 text-xs text-[#475569] sm:px-5">
           {report.tax_threshold?.disclaimer ||
-            'Số liệu thuế mang tính ước tính tham khảo theo Thông tư 152/2025/TT-BTC, không thay thế Tờ khai thuế chính thức 01/CNKD.'}
+            'Số liệu thuế mang tính ước tính tham khảo để chủ động dòng tiền, không thay thế Tờ khai thuế chính thức 01/CNKD.'}
         </div>
       </Card>
 

@@ -71,10 +71,10 @@ def test_prompt_injection_and_formula_injection_sanitizers():
 
 
 def test_session_token_hmac_integrity_and_revocation():
-    token = create_session_token("demo", "Nguyễn Minh Tâm", "tam@example.com", "google")
+    token = create_session_token("hh_test", "Nguyễn Minh Tâm", "tam@example.com", "google")
     claims = verify_session_token(token)
     assert claims is not None
-    assert claims["hid"] == "demo"
+    assert claims["hid"] == "hh_test"
 
     # Tampered token must fail verification
     tampered = token[:-4] + "dead"
@@ -89,8 +89,8 @@ def test_session_token_hmac_integrity_and_revocation():
 async def test_production_auth_revocation_multitenant_idor_and_csp():
     rate_limiter.reset()
     repo.reset_to_seed()
-    orig_demo = settings.demo_mode
-    settings.demo_mode = False
+    orig_cloud = settings.is_cloud_run
+    settings.is_cloud_run = True
     try:
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -103,10 +103,10 @@ async def test_production_auth_revocation_multitenant_idor_and_csp():
             r_tts_unauth = await client.get("/api/tts", params={"text": "Xin chào"})
             assert r_tts_unauth.status_code == 401
 
-            # 3. Preset and unauthenticated phone logins in Production (DEMO_MODE=false) MUST fail
+            # 3. Preset and unauthenticated phone logins MUST fail
             r_preset = await client.post(
                 "/api/auth/login",
-                json={"owner": "Preset", "name": "Demo", "auth_method": "preset"},
+                json={"owner": "Preset", "name": "Preset", "auth_method": "preset"},
             )
             assert r_preset.status_code == 403
 
@@ -116,7 +116,7 @@ async def test_production_auth_revocation_multitenant_idor_and_csp():
             )
             assert r_no_pw.status_code == 401
 
-            # 4. Register Tenant A with scrypt password hashing (even supplying a public seed tax_code)
+            # 4. Register Tenant A with scrypt password hashing
             r_reg_a = await client.post(
                 "/api/auth/register",
                 json={
@@ -130,11 +130,10 @@ async def test_production_auth_revocation_multitenant_idor_and_csp():
             assert r_reg_a.status_code == 200
             hid_a = r_reg_a.json()["household"]["id"]
             assert hid_a.startswith("hh_")
-            assert hid_a != "demo"
             tok_a = r_reg_a.cookies.get("keiki_session")
             assert tok_a
 
-            # Verify Tenant A does NOT inherit "demo" seed data
+            # Verify Tenant A starts with an empty ledger
             r_list_a = await client.get("/api/transactions")
             assert r_list_a.status_code == 200
             assert r_list_a.json()["total"] == 0
@@ -154,7 +153,7 @@ async def test_production_auth_revocation_multitenant_idor_and_csp():
                 assert r_good_pw.status_code == 200
                 assert r_good_pw.json()["household"]["id"] == hid_a
 
-            # 5. Normal user CANNOT overwrite server-wide GEMINI_API_KEY in Production (403, not 422)
+            # 5. Normal user CANNOT overwrite server-wide GEMINI_API_KEY on Cloud Run (403)
             r_change_key = await client.post(
                 "/api/settings/apikey",
                 json={"gemini_api_key": "attacker-key"},
@@ -184,7 +183,6 @@ async def test_production_auth_revocation_multitenant_idor_and_csp():
             assert "=1+1" not in cell_values
 
             # 7. Multi-tenant Tax-Code Takeover & IDOR Protection:
-            # Attacker registers with Tenant A's exact public tax_code "0316889912"
             r_reg_b = await client.post(
                 "/api/auth/register",
                 json={
@@ -198,7 +196,6 @@ async def test_production_auth_revocation_multitenant_idor_and_csp():
             assert r_reg_b.status_code == 200
             hid_b = r_reg_b.json()["household"]["id"]
             assert hid_b != hid_a
-            assert hid_b != "demo"
 
             r_list_b = await client.get("/api/transactions")
             assert r_list_b.status_code == 200
@@ -219,17 +216,18 @@ async def test_production_auth_revocation_multitenant_idor_and_csp():
             )
             assert r_replay.status_code == 401
     finally:
-        settings.demo_mode = orig_demo
+        settings.is_cloud_run = orig_cloud
         rate_limiter.reset()
 
 
 @pytest.mark.asyncio
-async def test_google_oauth_email_verified_isolation_and_demo_settings_fix(monkeypatch):
+async def test_google_oauth_email_verified_isolation_and_local_settings(monkeypatch):
     rate_limiter.reset()
     repo.reset_to_seed()
-    orig_demo = settings.demo_mode
     orig_key = settings.gemini_api_key
     orig_cid = settings.google_client_id
+    orig_cloud = settings.is_cloud_run
+    orig_admin = settings.admin_token
 
     class _FakeResp:
         def __init__(self, status_code: int, payload: dict):
@@ -254,7 +252,8 @@ async def test_google_oauth_email_verified_isolation_and_demo_settings_fix(monke
 
     try:
         transport = ASGITransport(app=app)
-        settings.demo_mode = False
+        settings.is_cloud_run = False
+        settings.admin_token = ""
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             # 1. Unverified Google email must be rejected (401)
             r_unver = await client.post(
@@ -279,44 +278,33 @@ async def test_google_oauth_email_verified_isolation_and_demo_settings_fix(monke
             assert hid_a.startswith("gg_")
             assert hid_b.startswith("gg_")
             assert hid_a != hid_b
-            assert hid_a != "demo" and hid_b != "demo"
 
-            # 2b. Google ID token (credential) in Production must fail if GOOGLE_CLIENT_ID is not configured
+            # 2b. Google ID token (credential) must fail if GOOGLE_CLIENT_ID is not configured
             settings.google_client_id = ""
+            monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
             r_cred_no_cid = await client.post(
                 "/api/auth/google",
                 json={"credential": "fake-jwt-token"},
             )
             assert r_cred_no_cid.status_code == 401
 
-            # 2c. Preset document injection is blocked in Production (403 DEMO_DISABLED)
-            r_preset_doc = await client.post("/api/documents/preset/receipt")
-            assert r_preset_doc.status_code == 403
-
-        # 3. Verify require_admin_or_demo returns 200 (not 422!) in DEMO_MODE=true
-        settings.demo_mode = True
-        async with AsyncClient(transport=transport, base_url="http://test") as demo_client:
-            r_demo = await demo_client.post(
-                "/api/auth/login",
-                json={"owner": "Demo", "name": "Demo Shop", "auth_method": "preset"},
-            )
-            assert r_demo.status_code == 200
-
-            r_set_key = await demo_client.post(
+            # 3. Local authenticated user can configure Gemini API key and Google Client ID
+            r_set_key = await client.post(
                 "/api/settings/apikey",
-                json={"gemini_api_key": "test-demo-key-placeholder", "gemini_model": "gemini-2.5-flash"},
+                json={"gemini_api_key": "test-local-key-placeholder", "gemini_model": "gemini-2.5-flash"},
             )
             assert r_set_key.status_code == 200
 
-            r_set_cid = await demo_client.post(
+            r_set_cid = await client.post(
                 "/api/settings/google-client-id",
                 json={"google_client_id": "123.apps.googleusercontent.com"},
             )
             assert r_set_cid.status_code == 200
     finally:
-        settings.demo_mode = orig_demo
         settings.gemini_api_key = orig_key
         settings.google_client_id = orig_cid
+        settings.is_cloud_run = orig_cloud
+        settings.admin_token = orig_admin
         rate_limiter.reset()
 
 
@@ -364,10 +352,10 @@ async def test_security_headers_and_ddos_rate_limiter_and_xff_anti_spoofing():
             r_xfp = await client.get("/api/health", headers={"X-Forwarded-Proto": "https"})
             assert "strict-transport-security" not in r_xfp.headers
 
-            # MemoryRepo capacity eviction protects seed entries while bounding RAM growth
-            sample_store = {"doc_seed_01": "keep", "k1": "v1", "k2": "v2"}
-            repo._evict_oldest_if_full(sample_store, max_items=3)
-            assert "doc_seed_01" in sample_store
+            # MemoryRepo capacity eviction bounds RAM growth
+            sample_store = {"protected_k": "keep", "k1": "v1", "k2": "v2"}
+            repo._evict_oldest_if_full(sample_store, max_items=3, protected_keys={"protected_k"})
+            assert "protected_k" in sample_store
             assert len(sample_store) == 2
 
             # Anti-DDoS Rate Limiter CANNOT be bypassed by spoofing X-Forwarded-For (trust_proxy=False)
@@ -415,16 +403,14 @@ async def test_csrf_origin_race_condition_and_account_lockout():
 
     rate_limiter.reset()
     repo.reset_to_seed()
-    orig_demo = settings.demo_mode
     orig_limit = settings.rate_limit_auth_per_min
     orig_trust = settings.trust_proxy_headers
-    settings.demo_mode = False
     settings.rate_limit_auth_per_min = 50
     settings.trust_proxy_headers = True
     try:
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            # 1. Concurrent registration race condition on the exact same phone -> exactly 1 succeeds (200), 1 rejected (409)
+            # 1. Concurrent registration race condition on the exact same phone -> 1 succeeds (200), 1 rejected (409)
             reg_payload = {
                 "phone": "0905 777 888",
                 "password": "RaceSafePassword!99",
@@ -494,7 +480,76 @@ async def test_csrf_origin_race_condition_and_account_lockout():
                 assert r_locked.status_code == 429
                 assert r_locked.json()["error"]["code"] == "ACCOUNT_TEMPORARILY_LOCKED"
     finally:
-        settings.demo_mode = orig_demo
         settings.rate_limit_auth_per_min = orig_limit
         settings.trust_proxy_headers = orig_trust
+        rate_limiter.reset()
+
+
+@pytest.mark.asyncio
+async def test_cloud_run_secret_guard_agent_rate_limit_and_id_validation():
+    rate_limiter.reset()
+    repo.reset_to_seed()
+    orig_cloud = settings.is_cloud_run
+    orig_admin = settings.admin_token
+    orig_ai_limit = settings.rate_limit_ai_per_min
+    orig_key = settings.gemini_api_key
+    settings.is_cloud_run = True
+    settings.admin_token = "super-secret-admin-token"
+    settings.rate_limit_ai_per_min = 2
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            r_reg = await client.post(
+                "/api/auth/register",
+                json={
+                    "phone": "0903334444",
+                    "password": "CloudUserPassword!123",
+                    "owner": "Cloud Visitor",
+                    "name": "Cloud Shop",
+                },
+            )
+            assert r_reg.status_code == 200
+            assert r_reg.headers.get("cross-origin-opener-policy") == "same-origin-allow-popups"
+            assert r_reg.headers.get("x-permitted-cross-domain-policies") == "none"
+
+            # 1. On Cloud Run (is_cloud_run=True), public visitors CANNOT wipe or overwrite GEMINI_API_KEY
+            r_wipe = await client.delete("/api/settings/apikey")
+            assert r_wipe.status_code == 403
+            r_overwrite = await client.post("/api/settings/apikey", json={"gemini_api_key": "evil"})
+            assert r_overwrite.status_code == 403
+
+            # 2. Admin with valid X-Admin-Token CAN rotate key
+            r_admin_ok = await client.post(
+                "/api/settings/apikey",
+                json={"gemini_api_key": ""},
+                headers={"X-Admin-Token": "super-secret-admin-token"},
+            )
+            assert r_admin_ok.status_code == 200
+
+            # 3. Malformed path identifiers are blocked with 400 INVALID_IDENTIFIER
+            r_bad_job = await client.get("/api/jobs/bad$id!@#")
+            assert r_bad_job.status_code == 400
+            assert r_bad_job.json()["error"]["code"] == "INVALID_IDENTIFIER"
+
+            r_bad_tx = await client.delete("/api/transactions/bad$tx!@#")
+            assert r_bad_tx.status_code == 400
+            assert r_bad_tx.json()["error"]["code"] == "INVALID_IDENTIFIER"
+
+            # 4. /api/agent/chat is rate-limited under heavy_ai_export tier (limit=2/min)
+            for _ in range(2):
+                r_chat = await client.post(
+                    "/api/agent/chat",
+                    json={"message": "Tổng thu chi tháng này", "month": "2026-11"},
+                )
+                assert r_chat.status_code == 200
+            r_chat_blocked = await client.post(
+                "/api/agent/chat",
+                json={"message": "Spam wallet drain", "month": "2026-11"},
+            )
+            assert r_chat_blocked.status_code == 429
+    finally:
+        settings.is_cloud_run = orig_cloud
+        settings.admin_token = orig_admin
+        settings.rate_limit_ai_per_min = orig_ai_limit
+        settings.gemini_api_key = orig_key
         rate_limiter.reset()

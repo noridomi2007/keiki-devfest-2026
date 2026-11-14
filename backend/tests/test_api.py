@@ -2,16 +2,127 @@ from __future__ import annotations
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from backend.app.config import settings
+from agent.schemas import AuditLogEntry, Item, Transaction, Warning
 from backend.app.main import app
+from backend.app.models import DocumentRecord
 from backend.app.repositories.memory import repo
+from backend.app.services.storage import storage_service
+
+
+def _seed_household_ledger(hid: str) -> None:
+    """Create sample documents and transactions for a registered household during tests."""
+    sample_jpg = b"\xff\xd8\xff\xe0\x00\x10JFIF_TEST_RECEIPT"
+    for did in ("doc_01", "doc_02"):
+        sp = f"{hid}/{did}.jpg"
+        storage_service.save_bytes(sp, sample_jpg, "image/jpeg")
+        repo.save_document(
+            DocumentRecord(
+                id=did,
+                household_id=hid,
+                kind="image" if did == "doc_01" else "transfer",
+                mime_type="image/jpeg",
+                sha256=f"sha_{did}",
+                storage_path=sp,
+                uploaded_at="2026-11-12T08:00:00Z",
+                preset_hint=None,
+            )
+        )
+
+    repo.save_transaction(
+        Transaction(
+            id="txn_01",
+            household_id=hid,
+            document_id="doc_01",
+            linked_document_ids=["doc_01"],
+            date="2026-11-12",
+            type="expense",
+            category="nhap_hang",
+            tax_group="khong_tinh_thue",
+            payment_method="cash",
+            amount_vnd=900000,
+            counterparty="Đại lý Nguyên liệu Minh Phát",
+            items=[Item(name="Nguyên liệu chế biến", quantity=5, unit_price_vnd=180000, line_total_vnd=900000)],
+            status="recorded",
+            audit_log=[
+                AuditLogEntry(
+                    timestamp="2026-11-12T08:00:00Z",
+                    action="created",
+                    actor="Keiki AI Agent",
+                    summary="Khởi tạo bút toán từ chứng từ gốc",
+                )
+            ],
+            source="agent",
+            created_at="2026-11-12T08:00:00Z",
+            updated_at="2026-11-12T08:00:00Z",
+        )
+    )
+    repo.save_transaction(
+        Transaction(
+            id="txn_02",
+            household_id=hid,
+            document_id="doc_02",
+            linked_document_ids=["doc_02"],
+            duplicate_of_id="txn_01",
+            date="2026-11-12",
+            type="expense",
+            category="nhap_hang",
+            tax_group="khong_tinh_thue",
+            payment_method="transfer",
+            amount_vnd=900000,
+            counterparty="Đại lý Nguyên liệu Minh Phát",
+            status="needs_review",
+            warnings=[
+                Warning(
+                    code="CROSS_DUPLICATE",
+                    severity="high",
+                    message="Phát hiện biên lai chuyển khoản trùng khớp với hóa đơn giấy #txn_01.",
+                )
+            ],
+            audit_log=[
+                AuditLogEntry(
+                    timestamp="2026-11-12T08:05:00Z",
+                    action="created",
+                    actor="Keiki AI Agent",
+                    summary="Khởi tạo bút toán chờ duyệt trùng chéo",
+                )
+            ],
+            source="agent",
+            created_at="2026-11-12T08:05:00Z",
+            updated_at="2026-11-12T08:05:00Z",
+        )
+    )
+    repo.save_transaction(
+        Transaction(
+            id="txn_03",
+            household_id=hid,
+            document_id="doc_01",
+            linked_document_ids=["doc_01", "doc_02"],
+            date="2026-11-12",
+            type="revenue",
+            category="ban_hang",
+            tax_group="phan_phoi_hang_hoa",
+            payment_method="transfer",
+            amount_vnd=3500000,
+            counterparty="Khách hàng mua sỉ",
+            status="recorded",
+            audit_log=[
+                AuditLogEntry(
+                    timestamp="2026-11-12T09:00:00Z",
+                    action="created",
+                    actor="Chủ hộ",
+                    summary="Ghi nhận doanh thu bán hàng",
+                )
+            ],
+            source="manual",
+            created_at="2026-11-12T09:00:00Z",
+            updated_at="2026-11-12T09:00:00Z",
+        )
+    )
 
 
 @pytest.mark.asyncio
 async def test_health_and_transactions_and_cross_duplicate_merge():
     repo.reset_to_seed()
-    orig_demo = settings.demo_mode
-    settings.demo_mode = True
     try:
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -20,41 +131,45 @@ async def test_health_and_transactions_and_cross_duplicate_merge():
             assert r_health.status_code == 200
             assert r_health.json()["service"] == "keiki"
 
-            # 2. Authenticate via demo preset in DEMO_MODE=true to receive HttpOnly session cookie
-            r_login = await client.post(
-                "/api/auth/login",
+            # 2. Register real household account
+            r_reg = await client.post(
+                "/api/auth/register",
                 json={
+                    "phone": "0909123456",
+                    "password": "RealAccountPassword!123",
                     "owner": "Nguyễn Minh Tâm",
                     "name": "Cửa hàng Thương mại & Dịch vụ Minh Tâm",
-                    "auth_method": "preset",
+                    "tax_code": "0316889912",
                 },
             )
-            assert r_login.status_code == 200
-            assert "keiki_session" in r_login.cookies
+            assert r_reg.status_code == 200
+            assert "keiki_session" in r_reg.cookies
+            hid = r_reg.json()["household"]["id"]
+            _seed_household_ledger(hid)
 
             # 3. List transactions
             r_list = await client.get("/api/transactions")
             assert r_list.status_code == 200
             data = r_list.json()
-            assert data["total"] >= 7
+            assert data["total"] == 3
 
-            # 4. Merge CROSS_DUPLICATE transaction (txn_seed_02 into txn_seed_01)
+            # 4. Merge CROSS_DUPLICATE transaction (txn_02 into txn_01)
             r_merge = await client.post(
-                "/api/transactions/txn_seed_02/confirm",
+                "/api/transactions/txn_02/confirm",
                 json={"merge_into_duplicate": True},
             )
             assert r_merge.status_code == 200
             merged_tx = r_merge.json()
-            assert merged_tx["id"] == "txn_seed_01"
-            assert "doc_seed_01" in merged_tx["linked_document_ids"]
-            assert "doc_seed_02" in merged_tx["linked_document_ids"]
+            assert merged_tx["id"] == "txn_01"
+            assert "doc_01" in merged_tx["linked_document_ids"]
+            assert "doc_02" in merged_tx["linked_document_ids"]
             assert merged_tx["payment_method"] == "transfer"
 
             # 5. Report calculation
             r_rep = await client.get("/api/report?period=month&anchor=2026-11-12")
             assert r_rep.status_code == 200
             rep = r_rep.json()
-            assert rep["totals"]["revenue_vnd"] > 0
+            assert rep["totals"]["revenue_vnd"] == 3500000
             assert rep["loan_readiness"]["cross_verified_count"] >= 2
 
             # 6. Export TT152 Excel & ZIP
@@ -66,7 +181,7 @@ async def test_health_and_transactions_and_cross_duplicate_merge():
             assert r_zip.status_code == 200
             assert len(r_zip.content) > 2000
     finally:
-        settings.demo_mode = orig_demo
+        repo.reset_to_seed()
 
 
 @pytest.mark.asyncio
@@ -75,20 +190,21 @@ async def test_tt152_upgrade_agent_audit_lock_and_profile():
     import openpyxl
 
     repo.reset_to_seed()
-    orig_demo = settings.demo_mode
-    settings.demo_mode = True
     try:
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            r_login = await client.post(
-                "/api/auth/login",
+            r_reg = await client.post(
+                "/api/auth/register",
                 json={
+                    "phone": "0905123456",
+                    "password": "RealAccountPassword!123",
                     "owner": "Nguyễn Minh Tâm",
                     "name": "Cửa hàng Thương mại & Dịch vụ Minh Tâm",
-                    "auth_method": "preset",
                 },
             )
-            assert r_login.status_code == 200
+            assert r_reg.status_code == 200
+            hid = r_reg.json()["household"]["id"]
+            _seed_household_ledger(hid)
 
             # 1. Household profile update + JSON backup
             r_prof = await client.patch(
@@ -109,7 +225,7 @@ async def test_tt152_upgrade_agent_audit_lock_and_profile():
 
             r_bak = await client.get("/api/household/backup")
             assert r_bak.status_code == 200
-            assert len(r_bak.json()["transactions"]) >= 7
+            assert len(r_bak.json()["transactions"]) == 3
 
             # 2. Circular 152/2025 5 official sheets & household header row
             r_xlsx = await client.get("/api/export?month=2026-11&evidence=false")
@@ -148,16 +264,16 @@ async def test_tt152_upgrade_agent_audit_lock_and_profile():
 
             # 4. Audit trail on PATCH + soft-delete on DELETE
             r_patch = await client.patch(
-                "/api/transactions/txn_seed_01",
-                json={"counterparty": "Đại lý Cà phê Minh Phát (Đã soát)"},
+                "/api/transactions/txn_01",
+                json={"counterparty": "Đại lý Nguyên liệu Minh Phát (Đã soát)"},
             )
             assert r_patch.status_code == 200
             assert len(r_patch.json()["audit_log"]) >= 2
 
-            r_del = await client.delete("/api/transactions/txn_seed_01")
+            r_del = await client.delete("/api/transactions/txn_01")
             assert r_del.status_code == 204
             tx_rejected = (await client.get("/api/transactions?status=rejected")).json()["items"]
-            soft_del_tx = next(t for t in tx_rejected if t["id"] == "txn_seed_01")
+            soft_del_tx = next(t for t in tx_rejected if t["id"] == "txn_01")
             assert soft_del_tx["status"] == "rejected"
             assert soft_del_tx["audit_log"][-1]["action"] == "rejected"
 
@@ -188,17 +304,18 @@ async def test_tt152_upgrade_agent_audit_lock_and_profile():
             assert r_clr.status_code == 200
             assert r_clr.json()["gemini_configured"] is False
     finally:
-        settings.demo_mode = orig_demo
         repo.reset_to_seed()
 
 
 @pytest.mark.asyncio
-async def test_production_voice_text_works_when_demo_disabled():
+async def test_voice_text_and_upload_without_api_key_reports_clear_error(monkeypatch):
     import asyncio
+    from backend.app.config import settings
 
     repo.reset_to_seed()
-    orig_demo = settings.demo_mode
-    settings.demo_mode = False
+    orig_key = settings.gemini_api_key
+    settings.gemini_api_key = ""
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     try:
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -213,6 +330,7 @@ async def test_production_voice_text_works_when_demo_disabled():
             )
             assert r_reg.status_code == 200
 
+            # 1. Voice text submission works
             r_voice = await client.post(
                 "/api/documents/voice-text",
                 json={
@@ -231,6 +349,27 @@ async def test_production_voice_text_works_when_demo_disabled():
             r_job = await client.get(f"/api/jobs/{job_id}")
             assert r_job.json()["status"] == "done"
             assert r_job.json()["transaction_id"] is not None
+
+            # 2. Uploading a real image when GEMINI_API_KEY is missing sets preset_hint=None and reports error instead of returning fake "Cà phê hạt"
+            r_up = await client.post(
+                "/api/documents",
+                files={"file": ("hoa_don_dien.jpg", b"\xff\xd8\xff\xe0\x00\x10JFIF_REAL_RECEIPT_DATA", "image/jpeg")},
+                data={"kind": "image"},
+            )
+            assert r_up.status_code == 201
+            doc_id = r_up.json()["document_id"]
+            img_job_id = r_up.json()["job_id"]
+            assert repo.get_document(doc_id).preset_hint is None
+
+            for _ in range(30):
+                r_img_job = await client.get(f"/api/jobs/{img_job_id}")
+                if r_img_job.json()["status"] in ("done", "error"):
+                    break
+                await asyncio.sleep(0.1)
+
+            r_img_job = await client.get(f"/api/jobs/{img_job_id}")
+            assert r_img_job.json()["status"] == "error"
+            assert "GEMINI_API_KEY" in (r_img_job.json()["error"] or "")
     finally:
-        settings.demo_mode = orig_demo
+        settings.gemini_api_key = orig_key
         repo.reset_to_seed()

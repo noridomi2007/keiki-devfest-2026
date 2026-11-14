@@ -1,34 +1,48 @@
 from __future__ import annotations
 
 import asyncio
+from collections import OrderedDict
+import hashlib
 import json
-import os
 from pathlib import Path
 
+from agent.client import create_gemini_client, resolve_gemini_api_key
+
 PROMPTS_DIR = Path(__file__).parent / "prompts"
+_SUMMARY_CACHE: OrderedDict[str, str] = OrderedDict()
+_MAX_SUMMARY_CACHE = 256
 
 
 async def summarize_report(numbers: dict, gemini_api_key: str | None = None, model: str = "gemini-2.5-flash") -> str:
-    """Generate a friendly 2-3 sentence Vietnamese business & loan-readiness insight using Google Gemini."""
-    api_key = gemini_api_key or os.environ.get("GEMINI_API_KEY", "").strip()
+    """Generate a friendly 2-3 sentence Vietnamese business & loan-readiness insight using Google Gemini with bounded caching."""
+    api_key = resolve_gemini_api_key(gemini_api_key)
+    serialized_numbers = json.dumps(numbers, ensure_ascii=False, sort_keys=True)
     if api_key:
-        try:
-            from google import genai
+        cache_key = hashlib.sha256(f"{model}:{serialized_numbers}".encode("utf-8")).hexdigest()
+        cached = _SUMMARY_CACHE.get(cache_key)
+        if cached:
+            _SUMMARY_CACHE.move_to_end(cache_key)
+            return cached
 
+        try:
             prompt_path = PROMPTS_DIR / "report_summary.vi.md"
             prompt_text = (
                 prompt_path.read_text(encoding="utf-8")
                 if prompt_path.exists()
                 else "Hãy tóm tắt báo cáo thu chi hộ kinh doanh bằng 2-3 câu tiếng Việt dễ hiểu."
             )
-            client = genai.Client(api_key=api_key)
+            client = create_gemini_client(api_key)
             resp = await asyncio.to_thread(
                 client.models.generate_content,
                 model=model,
-                contents=[f"{prompt_text}\n\nDữ liệu thống kê:\n{json.dumps(numbers, ensure_ascii=False)}"],
+                contents=[f"{prompt_text}\n\nDữ liệu thống kê:\n{serialized_numbers}"],
             )
             if resp.text and resp.text.strip():
-                return resp.text.strip()
+                summary = resp.text.strip()
+                _SUMMARY_CACHE[cache_key] = summary
+                if len(_SUMMARY_CACHE) > _MAX_SUMMARY_CACHE:
+                    _SUMMARY_CACHE.popitem(last=False)
+                return summary
         except Exception:
             pass
 

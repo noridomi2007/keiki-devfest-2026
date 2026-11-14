@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { HouseholdLoginPayload } from '../api/endpoints';
 import { AuthPanel } from '../components/AuthPanel';
@@ -64,9 +63,6 @@ export function LoginPage({
                 <span className="font-heading text-lg font-extrabold tracking-tight text-[#111625]">
                   Keiki
                 </span>
-                <Badge variant="outline" className="hidden font-mono text-xs text-[#2E2396] sm:inline-flex">
-                  TT 152/2025
-                </Badge>
               </div>
             </div>
           </div>

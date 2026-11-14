@@ -174,7 +174,7 @@ export function ReviewPage({ allTransactions, onUpdated }: ReviewPageProps) {
                       <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-white px-4 py-8 text-center">
                         <AppIcon name="receipt_long" className="text-3xl text-[#2E2396]" />
                         <p className="text-xs font-bold text-[#111625]">
-                          Bản ghi chứng từ dữ liệu mẫu
+                          Không thể tải ảnh chứng từ gốc
                         </p>
                         <p className="text-xs text-[#475569]">
                           Số tiền đối soát: {formatVnd(tx.amount_vnd)} • {formatDateVi(tx.date)}
@@ -311,7 +311,7 @@ export function ReviewPage({ allTransactions, onUpdated }: ReviewPageProps) {
                         </div>
                       </div>
                       <div>
-                        <span className="text-xs text-[#475569]">Phân loại sổ TT 152:</span>
+                        <span className="text-xs text-[#475569]">Nhóm ngành &amp; Sổ kế toán:</span>
                         <div className="mt-0.5 text-xs font-semibold text-[#111625]">
                           {vi.taxGroupLabels[tx.tax_group]}
                         </div>

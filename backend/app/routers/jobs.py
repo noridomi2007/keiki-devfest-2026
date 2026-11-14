@@ -4,10 +4,10 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
-from backend.app.errors import ApiError
+from backend.app.core.errors import ApiError
+from backend.app.core.security import require_session, validate_safe_id
 from backend.app.models import JobRecord
-from backend.app.repositories.memory import repo
-from backend.app.security import require_session
+from backend.app.repositories import repo
 from backend.app.services.jobs import job_runner
 
 router = APIRouter(
@@ -22,8 +22,9 @@ async def get_job(
     job_id: str,
     session: dict[str, Any] = Depends(require_session),
 ) -> JobRecord:
-    hid = str(session.get("hid", "demo"))
-    job = repo.get_job(job_id)
+    clean_id = validate_safe_id(job_id, "job_id")
+    hid = str(session.get("hid", ""))
+    job = repo.get_job(clean_id)
     if not job or job.household_id != hid:
         raise ApiError(status_code=404, code="NOT_FOUND", message="Không tìm thấy tiến trình xử lý chứng từ.")
     return job
@@ -34,13 +35,14 @@ async def stream_job(
     job_id: str,
     session: dict[str, Any] = Depends(require_session),
 ) -> StreamingResponse:
-    hid = str(session.get("hid", "demo"))
-    job = repo.get_job(job_id)
+    clean_id = validate_safe_id(job_id, "job_id")
+    hid = str(session.get("hid", ""))
+    job = repo.get_job(clean_id)
     if not job or job.household_id != hid:
         raise ApiError(status_code=404, code="NOT_FOUND", message="Không tìm thấy tiến trình xử lý chứng từ.")
 
     return StreamingResponse(
-        job_runner.stream_events(job_id),
+        job_runner.stream_events(clean_id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

@@ -72,7 +72,7 @@ export function KeikiLogo({
         </span>
         {showBadge && (
           <span className={`hidden font-mono text-xs font-semibold sm:inline ${badgeColor}`}>
-            TT 152/2025
+            AI Kế toán
           </span>
         )}
       </div>

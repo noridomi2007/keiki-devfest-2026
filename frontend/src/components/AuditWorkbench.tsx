@@ -100,7 +100,7 @@ const SCENARIOS: Record<Exclude<WorkbenchScenarioId, 'live_sandbox'>, WorkbenchS
       },
       {
         code: 'CLASSIFY',
-        title: 'Phân loại sổ S2d-HKD (Thông tư 152)',
+        title: 'Phân loại vào sổ Vật liệu & Hàng hóa (S2d-HKD)',
         detail: 'Xếp vào Chi phí vật liệu / hàng hóa kinh doanh, lưu kèm ảnh gốc.',
         icon: 'account_balance',
         tone: 'indigo',
@@ -210,7 +210,7 @@ const SCENARIOS: Record<Exclude<WorkbenchScenarioId, 'live_sandbox'>, WorkbenchS
       'khách trả tiền mặt tổng cộng 820 nghìn đồng."',
       'Kênh thu: Tiền mặt tại cửa hàng • 12/11/2026',
     ],
-    pythonCheckLabel: 'Kiểm toán số lượng & Định mức thuế TT152',
+    pythonCheckLabel: 'Kiểm toán số lượng & Định mức thuế theo ngành',
     pythonCheckFormula: '(20 × 35.000) + (12 × 10.000) = 820.000 đ • Thuế 4.5% = 36.900 đ',
     pythonCheckPassed: true,
     steps: [
@@ -236,7 +236,7 @@ const SCENARIOS: Record<Exclude<WorkbenchScenarioId, 'live_sandbox'>, WorkbenchS
         tone: 'emerald',
       },
       {
-        code: 'TAX_TT152',
+        code: 'TAX_RATE',
         title: 'Áp thuế suất Nhóm 2 (Dịch vụ ăn uống)',
         detail: 'GTGT 3.0% + TNCN 1.5% = 4.5% -> Thuế ước tính kỳ này 36.900 đ.',
         icon: 'percent',

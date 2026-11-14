@@ -20,7 +20,6 @@ from backend.app.security import (
     validate_file_security,
 )
 from backend.app.services.jobs import job_runner
-from backend.app.services.seed_assets import generate_document_svg
 from backend.app.services.storage import storage_service
 
 router = APIRouter(
@@ -50,7 +49,7 @@ async def upload_document(
     preset_hint: str | None = Form(None),
     session: dict[str, Any] = Depends(require_session),
 ) -> dict[str, str]:
-    hid = str(session.get("hid", "demo"))
+    hid = str(session.get("hid", ""))
     raw_mime = (file.content_type or "image/jpeg").split(";")[0].strip().lower()
     if raw_mime not in ALLOWED_MIMES:
         raise ApiError(
@@ -89,7 +88,7 @@ async def upload_document(
         sha256=sha256_hex,
         storage_path=storage_path,
         uploaded_at=now_iso,
-        preset_hint=safe_preset or safe_filename,
+        preset_hint=safe_preset,
     )
     repo.save_document(doc_record)
 
@@ -100,7 +99,7 @@ async def upload_document(
         data=data,
         sha256=sha256_hex,
         filename=safe_filename,
-        preset_hint=safe_preset or safe_filename,
+        preset_hint=safe_preset,
     )
     job = job_runner.start_job(doc_ref=doc_ref, household_id=hid)
     return {"document_id": doc_id, "job_id": job.id}
@@ -115,8 +114,8 @@ async def submit_voice_text(
     payload: VoiceTextRequest,
     session: dict[str, Any] = Depends(require_session),
 ) -> dict[str, str]:
-    """Production & Demo endpoint for natural-language Vietnamese spoken/typed transaction entry."""
-    hid = str(session.get("hid", "demo"))
+    """Endpoint for natural-language Vietnamese spoken/typed transaction entry."""
+    hid = str(session.get("hid", ""))
     clean_transcript = sanitize_prompt_input(payload.transcript, max_len=500)
     if len(clean_transcript) < 3:
         raise ApiError(
@@ -159,79 +158,6 @@ async def submit_voice_text(
     return {"document_id": doc_id, "job_id": job.id}
 
 
-@router.post("/preset/{preset_name}", status_code=201)
-async def trigger_demo_preset(
-    preset_name: str,
-    transcript: str | None = None,
-    session: dict[str, Any] = Depends(require_session),
-) -> dict[str, str]:
-    """One-click stage demo preset generator (receipt, cross_transfer, voice_vn, price_anomaly)."""
-    if not settings.demo_mode:
-        raise ApiError(
-            status_code=403,
-            code="DEMO_DISABLED",
-            message="Chức năng nạp chứng từ mẫu chỉ khả dụng ở chế độ Demo. Vui lòng tải lên ảnh chứng từ hoặc ghi âm thật.",
-        )
-    hid = str(session.get("hid", "demo"))
-    p = preset_name.lower()
-    if p in ("voice_vn", "voice_central"):
-        kind: DocumentKind = "audio"
-        mime_type = "audio/webm"
-        clean_transcript = sanitize_prompt_input(transcript, max_len=500)
-        spoken = clean_transcript or "Hôm nay xuất bán 20 đơn hàng bán lẻ tổng cộng 800 nghìn đồng, khách trả tiền mặt."
-        hint = f"voice:{spoken}"
-        data = spoken.encode("utf-8")
-        ext = ".webm"
-    elif p == "cross_transfer":
-        kind = "transfer"
-        mime_type = "image/svg+xml"
-        hint = "cross_transfer_900k"
-        data = generate_document_svg(hint)
-        ext = ".svg"
-    elif p == "price_anomaly":
-        kind = "image"
-        mime_type = "image/svg+xml"
-        hint = "anomaly_1250k"
-        data = generate_document_svg(hint)
-        ext = ".svg"
-    else:
-        kind = "image"
-        mime_type = "image/svg+xml"
-        hint = "receipt_minhphat_900k"
-        data = generate_document_svg(hint)
-        ext = ".svg"
-
-    doc_id = f"doc_{uuid.uuid4().hex[:8]}"
-    storage_path = f"{hid}/{doc_id}{ext}"
-    sha256_hex = hashlib.sha256(data + doc_id.encode()).hexdigest()
-
-    storage_service.save_bytes(storage_path, data, mime_type)
-    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    doc_record = DocumentRecord(
-        id=doc_id,
-        household_id=hid,
-        kind=kind,
-        mime_type=mime_type,
-        sha256=sha256_hex,
-        storage_path=storage_path,
-        uploaded_at=now_iso,
-        preset_hint=hint,
-    )
-    repo.save_document(doc_record)
-
-    doc_ref = DocumentRef(
-        document_id=doc_id,
-        kind=kind,
-        mime_type=mime_type,
-        data=data,
-        sha256=sha256_hex,
-        filename=f"{preset_name}{ext}",
-        preset_hint=hint,
-    )
-    job = job_runner.start_job(doc_ref=doc_ref, household_id=hid)
-    return {"document_id": doc_id, "job_id": job.id}
-
-
 @router.get("/{doc_id}/file")
 async def get_document_file(
     doc_id: str,
@@ -239,7 +165,7 @@ async def get_document_file(
 ) -> Response:
     if not _SAFE_ID_RE.match(doc_id):
         raise ApiError(status_code=400, code="INVALID_DOC_ID", message="Mã chứng từ không hợp lệ.")
-    hid = str(session.get("hid", "demo"))
+    hid = str(session.get("hid", ""))
     doc = repo.get_document(doc_id)
     if not doc or doc.household_id != hid:
         raise ApiError(status_code=404, code="NOT_FOUND", message="Không tìm thấy tệp chứng từ gốc.")

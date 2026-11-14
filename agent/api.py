@@ -79,12 +79,13 @@ async def process_document(
             raw_ext = await extract_from_voice(doc, ctx.settings)
         else:
             raw_ext = await extract_from_image(doc, ctx.settings)
-    except Exception:
+    except Exception as exc:
+        err_detail = str(exc).strip() or "Không thể đọc chứng từ tự động."
         yield make_event(
             seq=seq,
             step="error",
             status="error",
-            message="Không thể đọc chứng từ tự động. Đã chuyển vào danh sách cần kiểm tra.",
+            message=err_detail,
             data={"code": "EXTRACT_ERROR"},
         )
         return

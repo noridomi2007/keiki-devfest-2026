@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { api, type HouseholdLoginPayload } from './api/endpoints';
 import { AgentCopilotModal } from './components/AgentCopilotModal';
@@ -44,17 +43,12 @@ export function App() {
   const [showAgentModal, setShowAgentModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [mobilePreview, setMobilePreview] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [apiModelInput, setApiModelInput] = useState('gemini-2.5-flash');
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
 
   const loadData = useCallback(async (forceFetchTransactions = false) => {
     try {
       const stRes = await api.getSettingsStatus();
       setSettingsStatus(stRes);
-      if (stRes.gemini_model) {
-        setApiModelInput(stRes.gemini_model);
-      }
       if (stRes.authenticated || forceFetchTransactions) {
         setIsLoggedIn(true);
         const txRes = await api.listTransactions();
@@ -97,44 +91,6 @@ export function App() {
     setIsLoggedIn(false);
     setUnauthView('landing');
     setTransactions([]);
-  };
-
-  const handleSaveApiKey = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await api.updateApiKey(apiKeyInput, apiModelInput);
-      setStatusBanner(res.message);
-      setShowApiModal(false);
-      setApiKeyInput('');
-      await loadData();
-    } catch (err) {
-      setStatusBanner(err instanceof Error ? err.message : 'Không thể cập nhật khóa API.');
-    }
-    setTimeout(() => setStatusBanner(null), 4000);
-  };
-
-  const handleClearApiKey = async () => {
-    try {
-      const res = await api.clearApiKey();
-      setStatusBanner(res.message);
-      setShowApiModal(false);
-      setApiKeyInput('');
-      await loadData();
-    } catch (err) {
-      setStatusBanner(err instanceof Error ? err.message : 'Không thể xóa khóa API.');
-    }
-    setTimeout(() => setStatusBanner(null), 4000);
-  };
-
-  const handleResetDemo = async () => {
-    try {
-      const res = await api.resetDemo();
-      setStatusBanner(res.message);
-      await loadData();
-    } catch (err) {
-      setStatusBanner(err instanceof Error ? err.message : 'Không thể khôi phục dữ liệu mẫu.');
-    }
-    setTimeout(() => setStatusBanner(null), 4000);
   };
 
   const hh = settingsStatus?.household;
@@ -191,7 +147,7 @@ export function App() {
                     {vi.appName}
                   </h1>
                   <Badge variant="secondary" className="max-w-[140px] truncate text-[#2E2396] sm:max-w-none">
-                    {hh?.owner || 'Nguyễn Minh Tâm'}
+                    {hh?.owner || 'Chủ hộ kinh doanh'}
                   </Badge>
                   {hh?.email && !mobilePreview && (
                     <Badge
@@ -203,12 +159,16 @@ export function App() {
                   )}
                 </div>
                 <p className="flex flex-wrap items-center gap-x-1.5 text-xs font-medium text-[#475569]">
-                  <span className="truncate">{hh?.name || 'Cửa hàng Thương mại & Dịch vụ Minh Tâm'}</span>
-                  <span aria-hidden="true">•</span>
-                  <span className="whitespace-nowrap">
-                    MST:{' '}
-                    <strong className="font-mono text-[#111625]">{hh?.tax_code || '0316889912'}</strong>
-                  </span>
+                  <span className="truncate">{hh?.name || 'Hộ kinh doanh cá thể'}</span>
+                  {hh?.tax_code && (
+                    <>
+                      <span aria-hidden="true">•</span>
+                      <span className="whitespace-nowrap">
+                        MST:{' '}
+                        <strong className="font-mono text-[#111625]">{hh.tax_code}</strong>
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
             </div>
@@ -296,20 +256,6 @@ export function App() {
                   {vi.actions.largeText}
                 </span>
               </Button>
-
-              {settingsStatus?.demo_mode && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={handleResetDemo}
-                  title={vi.actions.resetDemo}
-                  className="h-9 px-2.5 text-xs font-semibold text-[#475569]"
-                >
-                  <AppIcon name="restart_alt" className="text-base" />
-                  <span className={mobilePreview ? 'hidden' : 'hidden md:inline'}>Reset</span>
-                </Button>
-              )}
 
               <Button
                 type="button"
@@ -401,7 +347,6 @@ export function App() {
               >
                 {activeTab === 'add' && (
                   <AddPage
-                    demoMode={Boolean(settingsStatus?.demo_mode)}
                     onTransactionCreated={() => loadData()}
                     onOpenReviewTab={() => setActiveTab('review')}
                     onOpenLedgerTab={() => setActiveTab('ledger')}
@@ -428,7 +373,6 @@ export function App() {
                 }`}
               >
                 <AddPage
-                  demoMode={Boolean(settingsStatus?.demo_mode)}
                   onTransactionCreated={() => loadData()}
                   onOpenReviewTab={() => setActiveTab('review')}
                   onOpenLedgerTab={() => setActiveTab('ledger')}
@@ -606,28 +550,16 @@ export function App() {
             </div>
           </DialogHeader>
 
-          {settingsStatus && !settingsStatus.demo_mode ? (
+          {settingsStatus &&
+          settingsStatus.gemini_configured &&
+          typeof window !== 'undefined' &&
+          window.location.hostname !== 'localhost' &&
+          window.location.hostname !== '127.0.0.1' ? (
             <div className="space-y-4 p-5">
-              <div
-                className={`rounded-xl border p-3.5 text-xs leading-relaxed ${
-                  settingsStatus.gemini_configured
-                    ? 'border-[#0B6E54]/30 bg-emerald-50/80 text-[#0B6E54]'
-                    : 'border-amber-300 bg-amber-50 text-[#92400E]'
-                }`}
-              >
-                {settingsStatus.gemini_configured ? (
-                  <>
-                    <strong>Đã kết nối bảo mật:</strong> Hệ thống đang sử dụng mô hình{' '}
-                    <code>{settingsStatus.gemini_model}</code> được cấu hình an toàn từ máy chủ
-                    (Google Cloud Secret Manager / biến môi trường).
-                  </>
-                ) : (
-                  <>
-                    <strong>Chưa cấu hình trên máy chủ:</strong> Ở chế độ Production, khóa{' '}
-                    <code>GEMINI_API_KEY</code> được quản lý qua biến môi trường hoặc Secret Manager
-                    trên Google Cloud Run để bảo vệ an toàn.
-                  </>
-                )}
+              <div className="rounded-xl border border-[#0B6E54]/30 bg-emerald-50/80 p-3.5 text-xs leading-relaxed text-[#0B6E54]">
+                <strong>Đã kết nối bảo mật:</strong> Hệ thống đang sử dụng mô hình{' '}
+                <code>{settingsStatus.gemini_model}</code> được cấu hình an toàn từ máy chủ
+                (Google Cloud Secret Manager / biến môi trường).
               </div>
               <DialogFooter>
                 <Button
@@ -640,66 +572,7 @@ export function App() {
                 </Button>
               </DialogFooter>
             </div>
-          ) : (
-            <form onSubmit={handleSaveApiKey} className="space-y-4 p-5">
-              <p className="text-xs leading-relaxed text-[#475569]">
-                Nhập khóa <strong className="text-[#111625]">GEMINI_API_KEY</strong> (từ Google AI
-                Studio) để Keiki gọi trực tiếp mô hình <code>gemini-2.5-flash</code> cho ảnh hóa đơn,
-                sao kê ngân hàng và giọng nói. Nếu để trống, Keiki vẫn chạy bộ kịch bản thông minh
-                tích hợp sẵn.
-              </p>
-
-              <div>
-                <label className="block text-xs font-bold text-[#111625]">GEMINI_API_KEY</label>
-                <Input
-                  type="password"
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  placeholder="AIzaSy..."
-                  className="mt-1 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[#111625]">Mô hình Gemini</label>
-                <select
-                  value={apiModelInput}
-                  onChange={(e) => setApiModelInput(e.target.value)}
-                  className="mt-1 h-10 w-full rounded-xl border border-border bg-[#F6F8FB] px-3 text-sm font-semibold text-[#111625] focus:border-[#2E2396] focus:bg-white focus:outline-none"
-                >
-                  <option value="gemini-2.5-flash">
-                    gemini-2.5-flash (Khuyên dùng - Nhanh &amp; Đa phương thức)
-                  </option>
-                  <option value="gemini-2.5-pro">gemini-2.5-pro (Suy luận sâu)</option>
-                </select>
-              </div>
-
-              <DialogFooter className="mt-2 flex-wrap gap-2">
-                {settingsStatus?.gemini_configured && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleClearApiKey}
-                    className="border-red-200 text-[#B91C1C] hover:bg-red-50 sm:mr-auto"
-                  >
-                    Xóa khóa
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowApiModal(false)}
-                >
-                  Đóng
-                </Button>
-                <Button type="submit" size="sm">
-                  Lưu cấu hình Gemini
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
     </>

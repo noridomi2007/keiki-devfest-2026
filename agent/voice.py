@@ -85,8 +85,9 @@ def _parse_vietnamese_transcript(transcript: str) -> ExtractionResult:
 async def extract_from_voice(doc: DocumentRef, settings: AgentSettings) -> ExtractionResult:
     """Process Vietnamese audio recording or spoken text command via Google Gemini Multimodal API."""
     from datetime import date
+    from agent.client import create_gemini_client, resolve_gemini_api_key
 
-    api_key = settings.gemini_api_key or os.environ.get("GEMINI_API_KEY", "").strip()
+    api_key = resolve_gemini_api_key(settings.gemini_api_key)
     today_iso = date.today().isoformat()
     prompt_path = PROMPTS_DIR / "extract_voice.vi.md"
     base_prompt = (
@@ -100,10 +101,9 @@ async def extract_from_voice(doc: DocumentRef, settings: AgentSettings) -> Extra
         spoken_text = doc.preset_hint.split("voice:", 1)[1].strip()
         if api_key and spoken_text:
             try:
-                from google import genai
                 from google.genai import types
 
-                client = genai.Client(api_key=api_key)
+                client = create_gemini_client(api_key)
                 resp = await asyncio.to_thread(
                     client.models.generate_content,
                     model=settings.gemini_model or "gemini-2.5-flash",
@@ -128,32 +128,31 @@ async def extract_from_voice(doc: DocumentRef, settings: AgentSettings) -> Extra
                 pass
         return _parse_vietnamese_transcript(spoken_text)
 
-    if api_key and len(doc.data) > 128:
-        try:
-            from google import genai
-            from google.genai import types
-
-            client = genai.Client(api_key=api_key)
-            resp = await asyncio.to_thread(
-                client.models.generate_content,
-                model=settings.gemini_model or "gemini-2.5-flash",
-                contents=[
-                    types.Part.from_bytes(data=doc.data, mime_type=doc.mime_type or "audio/webm"),
-                    prompt_with_date,
-                ],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=ExtractionResult,
-                    temperature=0.0,
-                ),
+    if len(doc.data) > 128:
+        if not api_key:
+            raise ValueError(
+                "Chưa cấu hình GEMINI_API_KEY để giải mã tệp âm thanh. Vui lòng thiết lập khóa Google Gemini API hoặc nhập bằng câu lệnh giọng nói văn bản."
             )
-            return (
-                resp.parsed
-                if isinstance(resp.parsed, ExtractionResult)
-                else ExtractionResult.model_validate(json.loads(resp.text))
-            )
-        except Exception:
-            pass
+        from google.genai import types
 
-    default_spoken = "Hôm nay xuất bán 20 đơn hàng bán lẻ tổng cộng 800 nghìn đồng, khách trả tiền mặt."
-    return _parse_vietnamese_transcript(default_spoken)
+        client = create_gemini_client(api_key)
+        resp = await asyncio.to_thread(
+            client.models.generate_content,
+            model=settings.gemini_model or "gemini-2.5-flash",
+            contents=[
+                types.Part.from_bytes(data=doc.data, mime_type=doc.mime_type or "audio/webm"),
+                prompt_with_date,
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=ExtractionResult,
+                temperature=0.0,
+            ),
+        )
+        return (
+            resp.parsed
+            if isinstance(resp.parsed, ExtractionResult)
+            else ExtractionResult.model_validate(json.loads(resp.text))
+        )
+
+    raise ValueError("Không thể trích xuất dữ liệu âm thanh trống.")

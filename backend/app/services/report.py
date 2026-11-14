@@ -25,7 +25,7 @@ TAX_RATES: dict[str, tuple[str, float]] = {
 
 async def build_report(
     repo: MemoryRepo,
-    household_id: str = "demo",
+    household_id: str = "",
     period: str = "month",
     anchor: str = "2026-11-12",
 ) -> ReportResponse:
@@ -133,7 +133,7 @@ async def build_report(
     if annualized_revenue_vnd <= 500_000_000:
         regime_code = "under_500m"
         recommended_books = [
-            "S1a-HKD (Sổ doanh thu bán hàng hóa, dịch vụ — Điều 4 TT 152/2025/TT-BTC)"
+            "S1a-HKD (Sổ doanh thu bán hàng hóa, dịch vụ)"
         ]
         status_label = "Dưới ngưỡng 500 triệu/năm — Thuộc diện miễn thuế GTGT & TNCN"
     elif annualized_revenue_vnd < 1_000_000_000:

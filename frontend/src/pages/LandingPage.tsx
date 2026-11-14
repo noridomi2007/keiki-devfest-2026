@@ -63,8 +63,8 @@ const SHEET_SPECS: SheetSpec[] = [
   {
     code: 'S2a-HKD',
     title: 'Sổ chi tiết Doanh thu bán hàng hóa, dịch vụ',
-    subtitle: 'Chia sẵn tiền bán hàng theo đúng 4 nhóm thuế suất GTGT + TNCN tại Thông tư 152/2025/TT-BTC.',
-    columns: ['Ngày chứng từ', 'Diễn giải giao dịch', 'Nhóm ngành TT152', 'Thuế suất', 'Thành tiền VND'],
+    subtitle: 'Chia sẵn tiền bán hàng theo đúng 4 nhóm ngành thuế suất GTGT + TNCN.',
+    columns: ['Ngày chứng từ', 'Diễn giải giao dịch', 'Nhóm ngành', 'Thuế suất', 'Thành tiền VND'],
     rows: [
       ['12/11/2026', 'Bán lẻ tại quầy (20 tô mì Quảng + 12 trà đá)', 'Nhóm 2: Dịch vụ ăn uống', '4.5%', '+820.000 đ'],
       ['11/11/2026', 'Hợp đồng thiết kế in ấn (Chuyển khoản)', 'Nhóm 2: Dịch vụ không bao thầu NVL', '7.0%', '+4.200.000 đ'],
@@ -87,7 +87,7 @@ const SHEET_SPECS: SheetSpec[] = [
   {
     code: 'S2c-HKD',
     title: 'Sổ chi tiết Doanh thu & Chi phí sản xuất, kinh doanh',
-    subtitle: 'Ghi gọn tiền điện nước, thuê mặt bằng, giao hàng và chi phí vận hành quán mỗi tháng theo Thông tư 152.',
+    subtitle: 'Ghi gọn tiền điện nước, thuê mặt bằng, giao hàng và chi phí vận hành quán mỗi tháng.',
     columns: ['Ngày chi', 'Nội dung chi phí', 'Thanh toán', 'Chứng từ gốc', 'Số tiền VND'],
     rows: [
       ['10/11/2026', 'Tiền điện, nước & Internet cửa hàng T11', 'Chuyển khoản', 'Ảnh hóa đơn EVN', '-1.250.000 đ'],
@@ -106,7 +106,7 @@ const SHEET_SPECS: SheetSpec[] = [
       ['Khoản đã ghép hóa đơn + VietQR', '18 khoản', '100% khớp mã FT', 'Không khai trùng chi phí'],
       ['Tiền lời thực sau chi phí & thuế', 'Vận hành ổn định', 'Khớp sao kê', 'Căn cứ xét hạn mức vay ưu đãi'],
     ],
-    summary: 'Tải về trọn bộ file .xlsx chuẩn TT 152/2025 kèm gói .zip lưu ảnh gốc từng hóa đơn',
+    summary: 'Tải về trọn bộ file sổ kế toán .xlsx kèm gói .zip lưu ảnh gốc từng hóa đơn',
   },
 ];
 
@@ -120,7 +120,7 @@ const FLOATING_NAV_ITEMS = [
   { id: 'hanh-trinh', roman: 'I', label: 'Hành trình' },
   { id: 'thu-nghiem', roman: 'II', label: 'Thử bắt lỗi' },
   { id: 'quy-trinh', roman: 'III', label: 'Cách hoạt động' },
-  { id: 'so-tt152', roman: 'IV', label: 'Bộ 4 sổ' },
+  { id: 'bo-so-ke-toan', roman: 'IV', label: 'Bộ 4 sổ' },
 ];
 
 const CHAPTER_RAIL_ITEMS: ChapterItem[] = [
@@ -128,8 +128,8 @@ const CHAPTER_RAIL_ITEMS: ChapterItem[] = [
   { id: 'hanh-trinh', roman: 'I', label: 'Hành trình 4 bước' },
   { id: 'thu-nghiem', roman: 'II', label: 'Thử bắt lỗi' },
   { id: 'quy-trinh', roman: 'III', label: 'Cách hoạt động' },
-  { id: 'so-tt152', roman: 'IV', label: 'Bộ 4 sổ thuế' },
-  { id: 'dang-nhap', roman: 'V', label: 'Dùng thử ngay' },
+  { id: 'bo-so-ke-toan', roman: 'IV', label: 'Bộ 4 sổ kế toán' },
+  { id: 'dang-nhap', roman: 'V', label: 'Mở sổ ngay' },
 ];
 
 function MetricItem({
@@ -259,9 +259,6 @@ export function LandingPage({
                 <span className="font-heading text-lg font-extrabold tracking-tight text-[#111625]">
                   Keiki
                 </span>
-                <span className="hidden font-mono text-xs font-semibold text-[#2E2396] sm:inline">
-                  TT 152/2025
-                </span>
               </div>
             </div>
 
@@ -275,8 +272,8 @@ export function LandingPage({
               <a href="#quy-trinh" className="transition hover:text-[#2E2396]">
                 Cách hoạt động
               </a>
-              <a href="#so-tt152" className="transition hover:text-[#2E2396]">
-                Bộ sổ TT 152
+              <a href="#bo-so-ke-toan" className="transition hover:text-[#2E2396]">
+                Bộ sổ kế toán
               </a>
             </nav>
 
@@ -340,7 +337,7 @@ export function LandingPage({
               {/* Hero Left: Masked Kinetic Typography Entrance */}
               <motion.div style={{ y: heroLeftY }} className="min-w-0 lg:col-span-6">
                 <p className="mb-3 font-mono text-xs font-semibold tracking-wider text-[#0B6E54] uppercase">
-                  Gemini Vision + Kiểm toán Python • Chuẩn TT 152/2025
+                  Gemini Vision + Kiểm toán Python • Sổ sách tự động
                 </p>
 
                 <h1 className="font-heading text-4xl font-extrabold leading-[1.08] tracking-tight text-[#111625] sm:text-5xl lg:text-[3.25rem]">
@@ -428,7 +425,7 @@ export function LandingPage({
 
                 <div className="mt-5 flex flex-wrap items-center gap-2">
                   <Badge variant="outline" className="border-[#2E2396]/25 bg-white/85 text-[#2E2396] shadow-2xs">
-                    Chuẩn Thông tư 152/2025
+                    Đối chiếu chứng từ tự động
                   </Badge>
                   <Badge variant="secondary" className="bg-white/80">
                     Không cần biết nghiệp vụ kế toán
@@ -961,13 +958,13 @@ export function LandingPage({
           </Card>
         </section>
 
-        {/* Section IV: Circular 152 Interactive Sheet Preview */}
-        <section id="so-tt152" className="mx-auto max-w-6xl px-4 pt-20 sm:px-6">
+        {/* Section IV: Interactive Ledger Sheet Preview */}
+        <section id="bo-so-ke-toan" className="mx-auto max-w-6xl px-4 pt-20 sm:px-6">
           <ScrollReveal y={24} className="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div className="max-w-2xl">
               <h2 className="font-heading text-2xl font-extrabold tracking-tight text-[#111625] sm:text-3xl">
                 <span className="mr-2 font-mono text-[#2E2396]">IV.</span>
-                Trọn bộ sổ Thông tư 152/2025 &amp; Hồ sơ vay vốn
+                Trọn bộ sổ kế toán &amp; Hồ sơ vay vốn
               </h2>
             </div>
 
@@ -1155,7 +1152,7 @@ export function LandingPage({
         <FloatingNavPill
           items={FLOATING_NAV_ITEMS}
           onNavigate={scrollToSection}
-          onStartDemo={() => scrollToSection('dang-nhap')}
+          onOpenAuth={() => scrollToSection('dang-nhap')}
         />
       </div>
     </MotionConfig>

@@ -60,7 +60,7 @@ def _write_tt152_header(
     ws["A3"].font = title_font
 
 
-def generate_tt152_excel(repo: MemoryRepo, month: str = "2026-11", household_id: str = "demo") -> bytes:
+def generate_tt152_excel(repo: MemoryRepo, month: str = "2026-11", household_id: str = "") -> bytes:
     """Generate full Circular 152/2025/TT-BTC Excel workbook (S2a/S1a, S2c, S2d, S2e, HoSoVayVon)."""
     date_from = f"{month}-01"
     date_to = f"{month}-31"
@@ -369,7 +369,7 @@ def generate_tt152_excel(repo: MemoryRepo, month: str = "2026-11", household_id:
     return buf.getvalue()
 
 
-def generate_export_zip(repo: MemoryRepo, month: str = "2026-11", household_id: str = "demo") -> bytes:
+def generate_export_zip(repo: MemoryRepo, month: str = "2026-11", household_id: str = "") -> bytes:
     """Create a .zip containing the TT152 Excel workbook, all original evidence images, and an index CSV."""
     xlsx_bytes = generate_tt152_excel(repo=repo, month=month, household_id=household_id)
     date_from = f"{month}-01"

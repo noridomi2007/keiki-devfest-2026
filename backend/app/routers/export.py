@@ -21,14 +21,14 @@ async def export_ledger(
     evidence: bool = Query(False),
     session: dict[str, Any] = Depends(require_session),
 ) -> Response:
-    hid = str(session.get("hid", "demo"))
+    hid = str(session.get("hid", ""))
     if evidence:
         zip_bytes = generate_export_zip(
             repo=repo,
             month=month,
             household_id=hid,
         )
-        filename = f"Keiki_SoKeToan_TT152_KemChungTu_{month}.zip"
+        filename = f"Keiki_SoKeToan_KemChungTu_{month}.zip"
         return Response(
             content=zip_bytes,
             media_type="application/zip",
@@ -40,7 +40,7 @@ async def export_ledger(
         month=month,
         household_id=hid,
     )
-    filename = f"Keiki_SoKeToan_TT152_{month}.xlsx"
+    filename = f"Keiki_SoKeToan_{month}.xlsx"
     return Response(
         content=xlsx_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

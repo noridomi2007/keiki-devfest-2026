@@ -89,7 +89,7 @@ class AuditLogEntry(BaseModel):
 
 class Transaction(BaseModel):
     id: str
-    household_id: str = "demo"
+    household_id: str = ""
     document_id: str | None = None
     linked_document_ids: list[str] = Field(default_factory=list)
     duplicate_of_id: str | None = None
@@ -191,6 +191,6 @@ class Repository(Protocol):
 class AgentContext(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
-    household_id: str = "demo"
+    household_id: str = ""
     repo: Any
     settings: AgentSettings = Field(default_factory=AgentSettings)
