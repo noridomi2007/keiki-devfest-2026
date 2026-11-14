@@ -164,6 +164,8 @@ async def patch_transaction(
         changes.append(f"Loại: {tx.type} → {updates['type']}")
     if "payment_method" in updates and updates["payment_method"] != tx.payment_method:
         changes.append(f"Thanh toán: {tx.payment_method} → {updates['payment_method']}")
+    if "status" in updates and updates["status"] and updates["status"] != tx.status:
+        changes.append(f"Trạng thái: {tx.status} → {updates['status']}")
 
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     updates["updated_at"] = now_iso

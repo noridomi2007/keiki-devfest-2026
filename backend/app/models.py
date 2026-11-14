@@ -46,7 +46,7 @@ class JobRecord(BaseModel):
 
 
 class TransactionCreateRequest(BaseModel):
-    date: str
+    date: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
     type: TransactionType
     category: CategoryType | None = None
     tax_group: TaxGroupType | None = None
@@ -58,7 +58,7 @@ class TransactionCreateRequest(BaseModel):
 
 
 class TransactionPatchRequest(BaseModel):
-    date: str | None = None
+    date: str | None = Field(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
     type: TransactionType | None = None
     category: CategoryType | None = None
     tax_group: TaxGroupType | None = None
@@ -162,7 +162,7 @@ class PasswordChangeRequest(BaseModel):
 
 
 class PeriodLockRequest(BaseModel):
-    month: str = "2026-11"
+    month: str = Field(default="2026-11", pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
     reason: str = ""
 
 
@@ -174,7 +174,7 @@ class AgentChatToolCall(BaseModel):
 
 class AgentChatRequest(BaseModel):
     message: str
-    month: str = "2026-11"
+    month: str = Field(default="2026-11", pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
 
 
 class AgentChatResponse(BaseModel):

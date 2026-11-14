@@ -178,8 +178,27 @@ def normalize_date(raw: str | None, reference_date: date | str | None = None) ->
     return None
 
 
+_OCR_INJECTION_RE = re.compile(
+    r"(ignore\s+(all\s+)?(previous|prior|above|system)\s+(instructions|prompts|rules)|"
+    r"disregard\s+(all\s+)?(previous|prior|above)\s+(instructions|prompts|rules)|"
+    r"you\s+are\s+now\s+a|system\s*prompt\s*:|new\s+instructions\s*:|override\s+instructions|"
+    r"</?\s*(system|instruction|prompt)\s*>|<\|im_start\|>|<\|im_end\|>|###\s*(system|instruction)|"
+    r"bỏ\s+qua\s+(mọi\s+|tất\s+cả\s+|các\s+)?(hướng\s+dẫn|lệnh|quy\s+tắc)(\s+trước)?|"
+    r"hướng\s+dẫn\s+hệ\s+thống\s*:|lệnh\s+hệ\s+thống\s*:|ghi\s+đè\s+hệ\s+thống)",
+    re.IGNORECASE,
+)
+
+
+def _sanitize_extracted_text(val: str | None, max_len: int = 240) -> str | None:
+    if not val:
+        return None
+    cleaned = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", val).strip()
+    cleaned = _OCR_INJECTION_RE.sub("[ĐÃ_LỌC_LỆNH_LẠ]", cleaned)
+    return cleaned[:max_len] or None
+
+
 def normalize_extraction(ext: ExtractionResult, reference_date: date | str | None = None) -> ExtractionResult:
-    """Normalize all fields inside ExtractionResult in-place/copy."""
+    """Normalize and sanitize all fields inside ExtractionResult against indirect prompt injection."""
     ref = _resolve_ref_date(reference_date)
     norm_date = normalize_date(ext.date, ref)
     if not norm_date and ext.transcript:
@@ -191,14 +210,23 @@ def normalize_extraction(ext: ExtractionResult, reference_date: date | str | Non
     if norm_amount is None and ext.transcript:
         norm_amount = parse_vnd_amount(ext.transcript)
 
-    counterparty = ext.counterparty.strip() if ext.counterparty else None
-    tax_code = re.sub(r"\s+", "", ext.tax_code) if ext.tax_code else None
+    counterparty = _sanitize_extracted_text(ext.counterparty, max_len=160)
+    tax_code = re.sub(r"[^0-9\-]", "", ext.tax_code)[:20] if ext.tax_code else None
+    transcript = _sanitize_extracted_text(ext.transcript, max_len=500)
+    clarification = _sanitize_extracted_text(ext.clarification_question, max_len=300)
+    clean_items = [
+        it.model_copy(update={"name": _sanitize_extracted_text(it.name, max_len=120) or "Hàng hóa"})
+        for it in ext.items
+    ]
 
     return ext.model_copy(
         update={
             "date": norm_date,
             "amount_vnd": norm_amount,
             "counterparty": counterparty,
-            "tax_code": tax_code,
+            "tax_code": tax_code or None,
+            "transcript": transcript,
+            "clarification_question": clarification,
+            "items": clean_items,
         }
     )

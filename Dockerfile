@@ -22,5 +22,6 @@ RUN mkdir -p /app/backend/data/uploads && chown -R keiki:keiki /app
 USER keiki
 
 ENV PYTHONPATH=/app
+ENV APP_ENV=production
 ENV TRUST_PROXY_HEADERS=true
 CMD exec uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-8080} --proxy-headers

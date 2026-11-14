@@ -14,9 +14,11 @@ from pydantic import BaseModel
 from backend.app.core.config import settings
 from backend.app.core.errors import ApiError
 from backend.app.core.security import (
+    bump_household_token_version,
     clear_session_cookie,
     create_session_token,
     extract_all_tokens,
+    get_optional_session,
     rate_limiter,
     require_session,
     revoke_session_token,
@@ -207,9 +209,14 @@ async def login_household(
 
     norm_phone = _normalize_phone(payload.phone)
     provided_pw = payload.password or ""
+    user = repo.get_user_by_phone(norm_phone) if norm_phone else None
+    active_sess = get_optional_session(request)
+    is_trusted_owner_session = bool(
+        active_sess and user and active_sess.get("hid") == user.get("household_id")
+    )
 
     fail_key = f"acct_fail:{norm_phone}" if norm_phone else ""
-    if fail_key:
+    if fail_key and not is_trusted_owner_session:
         acct_blocked, retry_after = rate_limiter.is_blocked(
             fail_key,
             limit=_ACCOUNT_MAX_FAILS,
@@ -232,7 +239,6 @@ async def login_household(
             message="Phương thức đăng nhập không hợp lệ.",
         )
 
-    user = repo.get_user_by_phone(norm_phone) if norm_phone else None
     if not user:
         await asyncio.to_thread(_verify_password, provided_pw or "invalid", _DUMMY_SALT_HEX, _DUMMY_HASH_HEX)
         if fail_key:
@@ -308,13 +314,22 @@ async def login_with_google(
                     message="Không thể xác thực access_token Google OAuth2. Vui lòng thử lại.",
                 )
             info = resp.json()
-            if expected_cid and ("aud" in info or "azp" in info):
-                if info.get("aud") != expected_cid and info.get("azp") != expected_cid:
-                    raise ApiError(
-                        status_code=401,
-                        code="GOOGLE_AUDIENCE_MISMATCH",
-                        message="Token Google không khớp với Google Client ID của hệ thống.",
-                    )
+            aud_val = info.get("aud") or info.get("azp") or info.get("issued_to")
+            if expected_cid and not aud_val:
+                ti_resp = await client.get(
+                    "https://oauth2.googleapis.com/tokeninfo",
+                    params={"access_token": payload.access_token},
+                    headers={"Authorization": f"Bearer {payload.access_token}"},
+                )
+                if ti_resp.status_code == 200:
+                    ti_info = ti_resp.json()
+                    aud_val = ti_info.get("aud") or ti_info.get("azp") or ti_info.get("issued_to")
+            if expected_cid and aud_val != expected_cid:
+                raise ApiError(
+                    status_code=401,
+                    code="GOOGLE_AUDIENCE_MISMATCH",
+                    message="Token Google không khớp với Google Client ID của hệ thống.",
+                )
             if not _is_truthy_verified(info.get("email_verified")):
                 raise ApiError(
                     status_code=401,
@@ -392,21 +407,29 @@ async def login_with_google(
     identity_key = user_sub or user_email or owner_display.lower()
     hid = f"gg_{hashlib.sha256(identity_key.encode('utf-8')).hexdigest()[:12]}"
 
+    existing_hh = repo.households.get(hid) or {}
+    default_shop = "Hộ kinh doanh (Google)"
+    custom_shop = (
+        payload.shop_name.strip()
+        if payload.shop_name and payload.shop_name.strip() != default_shop
+        else ""
+    )
     hh_info = {
+        **existing_hh,
         "id": hid,
-        "name": payload.shop_name,
-        "owner": owner_display,
-        "phone": "",
-        "tax_code": payload.tax_code.strip(),
-        "address": payload.address,
+        "name": custom_shop or existing_hh.get("name") or default_shop,
+        "owner": existing_hh.get("owner") or owner_display,
+        "phone": existing_hh.get("phone") or "",
+        "tax_code": payload.tax_code.strip() or existing_hh.get("tax_code", ""),
+        "address": existing_hh.get("address") or payload.address,
         "email": user_email,
-        "picture": user_picture,
+        "picture": user_picture or existing_hh.get("picture", ""),
         "auth_method": "google",
     }
     repo.save_household(hid, hh_info)
     token = create_session_token(
         household_id=hid,
-        owner=owner_display,
+        owner=str(hh_info["owner"]),
         email=user_email,
         auth_method="google",
     )
@@ -414,7 +437,7 @@ async def login_with_google(
     return {
         "status": "ok",
         "household": hh_info,
-        "message": f"Đã đăng nhập bằng Google: {owner_display} ({user_email})!",
+        "message": f"Đã đăng nhập bằng Google: {hh_info['owner']} ({user_email})!",
     }
 
 
@@ -429,6 +452,8 @@ async def logout_household(request: Request, response: Response) -> dict[str, st
 @router.post("/change-password")
 async def change_account_password(
     payload: PasswordChangeRequest,
+    request: Request,
+    response: Response,
     session: dict[str, Any] = Depends(require_session),
 ) -> dict[str, str]:
     hid = str(session.get("hid", ""))
@@ -465,6 +490,24 @@ async def change_account_password(
         )
 
     new_salt, new_hash = await asyncio.to_thread(_hash_password, payload.new_password)
-    updated_user = {**user, "salt": new_salt, "password_hash": new_hash}
+    new_ver = bump_household_token_version(hid)
+    for tok in extract_all_tokens(request):
+        revoke_session_token(tok)
+
+    updated_user = {
+        **user,
+        "salt": new_salt,
+        "password_hash": new_hash,
+        "token_version": str(new_ver),
+    }
     repo.save_user(user_key, updated_user)
-    return {"status": "ok", "message": "Đã đổi mật khẩu thành công!"}
+
+    fresh_token = create_session_token(
+        household_id=hid,
+        owner=str(session.get("owner") or user.get("owner") or "Chủ hộ"),
+        email=str(session.get("email") or ""),
+        auth_method="password",
+        token_version=new_ver,
+    )
+    set_session_cookie(response, request, fresh_token)
+    return {"status": "ok", "message": "Đã đổi mật khẩu thành công và thu hồi các phiên cũ!"}

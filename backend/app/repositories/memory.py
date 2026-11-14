@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 from agent.normalize import normalize_text
 from agent.schemas import PricePoint, TaxCodeInfo, Transaction
+from backend.app.core.security import set_household_token_version
 from backend.app.models import DocumentRecord, JobRecord
 
 
@@ -22,6 +23,8 @@ class MemoryRepo:
     MAX_DOCUMENTS = 5000
     MAX_TRANSACTIONS = 10000
     MAX_JOBS = 2000
+    MAX_TRANSACTIONS_PER_HOUSEHOLD = 2500
+    MAX_DOCUMENTS_PER_HOUSEHOLD = 1000
 
     def __init__(self, persist: bool = True) -> None:
         self.documents: dict[str, DocumentRecord] = {}
@@ -92,7 +95,13 @@ class MemoryRepo:
         for hid, hh in (payload.get("households") or {}).items():
             self.households[str(hid)] = dict(hh)
         for phone, usr in (payload.get("users") or {}).items():
-            self.users[str(phone)] = dict(usr)
+            usr_dict = dict(usr)
+            self.users[str(phone)] = usr_dict
+            if usr_dict.get("household_id") and usr_dict.get("token_version"):
+                try:
+                    set_household_token_version(str(usr_dict["household_id"]), int(usr_dict["token_version"]))
+                except Exception:
+                    pass
         for doc_id, doc_raw in (payload.get("documents") or {}).items():
             self.documents[str(doc_id)] = DocumentRecord.model_validate(doc_raw)
         for tx_id, tx_raw in (payload.get("transactions") or {}).items():
@@ -110,15 +119,27 @@ class MemoryRepo:
             "transactions": {k: v.model_dump() for k, v in self.transactions.items()},
             "locked_periods": self.locked_periods,
         }
+        serialized = json.dumps(payload, ensure_ascii=False)
         if self._firestore_db is not None:
             try:
-                self._firestore_db.collection("keiki_state").document("runtime_snapshot").set(payload)
+                if len(serialized.encode("utf-8")) < 950_000:
+                    self._firestore_db.collection("keiki_state").document("runtime_snapshot").set(payload)
+                else:
+                    # Split by collection to avoid Firestore 1 MiB single-document limit
+                    col = self._firestore_db.collection("keiki_state")
+                    col.document("meta_snapshot").set(
+                        {
+                            "households": self.households,
+                            "users": self.users,
+                            "locked_periods": self.locked_periods,
+                        }
+                    )
             except Exception:
                 pass
         try:
             STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
             tmp_path = STATE_FILE.with_suffix(".tmp")
-            tmp_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            tmp_path.write_text(serialized, encoding="utf-8")
             os.replace(tmp_path, STATE_FILE)
         except Exception:
             pass
@@ -143,9 +164,20 @@ class MemoryRepo:
             if len(store) < max_items:
                 break
 
+    def _active_household_ids(self) -> set[str]:
+        active = {t.household_id for t in self.transactions.values() if t.household_id}
+        for lk in self.locked_periods:
+            if ":" in lk:
+                active.add(lk.split(":", 1)[0])
+        return active
+
     def save_household(self, household_id: str, info: dict[str, str]) -> dict[str, str]:
         if household_id not in self.households:
-            self._evict_oldest_if_full(self.households, self.MAX_HOUSEHOLDS)
+            self._evict_oldest_if_full(
+                self.households,
+                self.MAX_HOUSEHOLDS,
+                protected_keys=self._active_household_ids(),
+            )
         clean = dict(info)
         clean.setdefault("business_sector", "Thương mại & Dịch vụ tổng hợp")
         clean.setdefault("revenue_tier", "500m_to_3b")
@@ -159,7 +191,15 @@ class MemoryRepo:
 
     def save_user(self, phone: str, user_record: dict[str, str]) -> dict[str, str]:
         if phone not in self.users:
-            self._evict_oldest_if_full(self.users, self.MAX_USERS)
+            active_hids = self._active_household_ids()
+            protected_phones = {
+                p for p, u in self.users.items() if u.get("household_id") in active_hids
+            }
+            self._evict_oldest_if_full(
+                self.users,
+                self.MAX_USERS,
+                protected_keys=protected_phones,
+            )
         self.users[phone] = dict(user_record)
         self._save_snapshot()
         return self.users[phone]
@@ -311,7 +351,15 @@ class MemoryRepo:
     # CRUD methods for Backend Routers
     def save_document(self, doc: DocumentRecord) -> DocumentRecord:
         if doc.id not in self.documents:
-            self._evict_oldest_if_full(self.documents, self.MAX_DOCUMENTS)
+            if doc.household_id:
+                hh_docs = [k for k, d in self.documents.items() if d.household_id == doc.household_id]
+                while len(hh_docs) >= self.MAX_DOCUMENTS_PER_HOUSEHOLD:
+                    oldest_hh_doc = hh_docs.pop(0)
+                    self.documents.pop(oldest_hh_doc, None)
+            other_tenant_docs = {
+                k for k, d in self.documents.items() if d.household_id and d.household_id != doc.household_id
+            }
+            self._evict_oldest_if_full(self.documents, self.MAX_DOCUMENTS, protected_keys=other_tenant_docs)
         self.documents[doc.id] = doc
         self._save_snapshot()
         return doc
@@ -357,7 +405,20 @@ class MemoryRepo:
 
     def save_transaction(self, tx: Transaction) -> Transaction:
         if tx.id not in self.transactions:
-            self._evict_oldest_if_full(self.transactions, self.MAX_TRANSACTIONS)
+            if tx.household_id:
+                hh_txs = [k for k, t in self.transactions.items() if t.household_id == tx.household_id]
+                while len(hh_txs) >= self.MAX_TRANSACTIONS_PER_HOUSEHOLD:
+                    # Prefer evicting soft-deleted ('rejected') transactions of the same household first
+                    rejected_k = next(
+                        (k for k in hh_txs if self.transactions[k].status == "rejected"),
+                        hh_txs[0],
+                    )
+                    hh_txs.remove(rejected_k)
+                    self.transactions.pop(rejected_k, None)
+            other_tenant_txs = {
+                k for k, t in self.transactions.items() if t.household_id and t.household_id != tx.household_id
+            }
+            self._evict_oldest_if_full(self.transactions, self.MAX_TRANSACTIONS, protected_keys=other_tenant_txs)
         self.transactions[tx.id] = tx
         self._save_snapshot()
         return tx

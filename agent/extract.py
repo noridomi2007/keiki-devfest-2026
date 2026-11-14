@@ -86,7 +86,7 @@ def _load_prompt(name: str) -> str:
 
 async def extract_from_image(doc: DocumentRef, settings: AgentSettings) -> ExtractionResult:
     """Call Google Gemini Multimodal API (google-genai) with Structured Outputs."""
-    if doc.preset_hint and doc.preset_hint in _EVAL_PRESETS:
+    if doc.preset_hint and doc.preset_hint in _EVAL_PRESETS and doc.document_id.startswith("eval_doc_"):
         return _EVAL_PRESETS[doc.preset_hint].model_copy(deep=True)
 
     if settings.cache_dir and doc.sha256:

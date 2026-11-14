@@ -46,7 +46,6 @@ ALLOWED_MIMES = {
 async def upload_document(
     file: UploadFile = File(...),
     kind: DocumentKind = Form("image"),
-    preset_hint: str | None = Form(None),
     session: dict[str, Any] = Depends(require_session),
 ) -> dict[str, str]:
     hid = str(session.get("hid", ""))
@@ -70,7 +69,6 @@ async def upload_document(
         )
 
     safe_filename = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", file.filename or "upload")[:80]
-    safe_preset = sanitize_prompt_input(preset_hint, max_len=120) if preset_hint else None
 
     doc_id = f"doc_{uuid.uuid4().hex[:8]}"
     ext = ALLOWED_MIMES.get(raw_mime, ".bin")
@@ -88,7 +86,7 @@ async def upload_document(
         sha256=sha256_hex,
         storage_path=storage_path,
         uploaded_at=now_iso,
-        preset_hint=safe_preset,
+        preset_hint=None,
     )
     repo.save_document(doc_record)
 
@@ -99,7 +97,7 @@ async def upload_document(
         data=data,
         sha256=sha256_hex,
         filename=safe_filename,
-        preset_hint=safe_preset,
+        preset_hint=None,
     )
     job = job_runner.start_job(doc_ref=doc_ref, household_id=hid)
     return {"document_id": doc_id, "job_id": job.id}

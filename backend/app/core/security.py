@@ -48,15 +48,44 @@ _DANGEROUS_SVG_PATTERNS = re.compile(
 
 # Common Prompt Injection patterns to neutralize in untrusted voice/OCR text
 _PROMPT_INJECTION_PATTERNS = re.compile(
-    r"(ignore\s+(all\s+)?(previous|prior|above)\s+instructions|"
-    r"disregard\s+(all\s+)?(previous|prior)\s+instructions|"
-    r"you\s+are\s+now\s+a|system\s*prompt\s*:|</?\s*system\s*>|"
-    r"bỏ\s+qua\s+(mọi\s+|tất\s+cả\s+)?hướng\s+dẫn\s+trước)",
+    r"(ignore\s+(all\s+)?(previous|prior|above|system)\s+(instructions|prompts|rules)|"
+    r"disregard\s+(all\s+)?(previous|prior|above)\s+(instructions|prompts|rules)|"
+    r"forget\s+(all\s+)?(previous|prior|above)\s+(instructions|context)|"
+    r"you\s+are\s+now\s+a|system\s*prompt\s*:|new\s+instructions\s*:|override\s+instructions|"
+    r"</?\s*(system|instruction|prompt)\s*>|<\|im_start\|>|<\|im_end\|>|###\s*(system|instruction)|"
+    r"bỏ\s+qua\s+(mọi\s+|tất\s+cả\s+|các\s+)?(hướng\s+dẫn|lệnh|quy\s+tắc)(\s+trước)?|"
+    r"hướng\s+dẫn\s+hệ\s+thống\s*:|lệnh\s+hệ\s+thống\s*:|ghi\s+đè\s+hệ\s+thống)",
     re.IGNORECASE,
 )
 
 # Server-side revoked session token JTI denylist (prevents token replay after logout)
+_MAX_REVOKED_JTIS = 5000
 _REVOKED_JTIS: dict[str, int] = {}
+
+# Per-household minimum valid token version (invalidates all older tokens upon password change)
+_HOUSEHOLD_TOKEN_VERSIONS: dict[str, int] = {}
+
+
+def bump_household_token_version(household_id: str, min_version: int | None = None) -> int:
+    """Increment the minimum accepted token version for a household, invalidating all prior tokens."""
+    if not household_id:
+        return 1
+    current = _HOUSEHOLD_TOKEN_VERSIONS.get(household_id, 1)
+    next_ver = max(current + 1, min_version or (current + 1))
+    if len(_HOUSEHOLD_TOKEN_VERSIONS) > 5000 and household_id not in _HOUSEHOLD_TOKEN_VERSIONS:
+        oldest_key = next(iter(_HOUSEHOLD_TOKEN_VERSIONS))
+        _HOUSEHOLD_TOKEN_VERSIONS.pop(oldest_key, None)
+    _HOUSEHOLD_TOKEN_VERSIONS[household_id] = next_ver
+    return next_ver
+
+
+def get_household_token_version(household_id: str) -> int:
+    return _HOUSEHOLD_TOKEN_VERSIONS.get(household_id, 1)
+
+
+def set_household_token_version(household_id: str, version: int) -> None:
+    if household_id and version >= 1:
+        _HOUSEHOLD_TOKEN_VERSIONS[household_id] = int(version)
 
 
 def validate_safe_id(raw_id: str, label: str = "mã định danh") -> str:
@@ -71,11 +100,14 @@ def validate_safe_id(raw_id: str, label: str = "mã định danh") -> str:
 
 
 def _cleanup_revoked_jtis() -> None:
-    if len(_REVOKED_JTIS) > 2000:
-        now = int(time.time())
+    now = int(time.time())
+    if len(_REVOKED_JTIS) >= 2000:
         expired = [k for k, exp in _REVOKED_JTIS.items() if exp < now]
         for k in expired:
             _REVOKED_JTIS.pop(k, None)
+    while len(_REVOKED_JTIS) >= _MAX_REVOKED_JTIS:
+        oldest_jti = next(iter(_REVOKED_JTIS))
+        _REVOKED_JTIS.pop(oldest_jti, None)
 
 
 def create_session_token(
@@ -83,15 +115,20 @@ def create_session_token(
     owner: str,
     email: str = "",
     auth_method: str = "password",
+    token_version: int | None = None,
 ) -> str:
-    """Issue an HMAC-SHA256 signed session token with a unique revocable JTI."""
+    """Issue an HMAC-SHA256 signed session token with a unique revocable JTI and version binding."""
+    now = int(time.time())
+    ver = token_version if token_version is not None else get_household_token_version(household_id)
     payload = {
         "jti": secrets.token_hex(12),
         "hid": household_id,
         "owner": owner,
         "email": email,
         "auth": auth_method,
-        "exp": int(time.time()) + settings.session_ttl_seconds,
+        "iat": now,
+        "ver": int(ver),
+        "exp": now + settings.session_ttl_seconds,
     }
     raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     b64 = base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
@@ -104,7 +141,7 @@ def create_session_token(
 
 
 def verify_session_token(token: str) -> dict[str, Any] | None:
-    """Verify HMAC-SHA256 signature, expiration, and server-side revocation status."""
+    """Verify HMAC-SHA256 signature, expiration, token version, and server-side revocation status."""
     if not token or "." not in token:
         return None
     try:
@@ -122,6 +159,10 @@ def verify_session_token(token: str) -> dict[str, Any] | None:
             return None
         jti = str(payload.get("jti", ""))
         if not jti or jti in _REVOKED_JTIS:
+            return None
+        hid = str(payload.get("hid", ""))
+        token_ver = int(payload.get("ver", 1))
+        if hid and token_ver < get_household_token_version(hid):
             return None
         return payload
     except Exception:
@@ -234,20 +275,20 @@ async def require_secret_mutation_permission(
 
 async def require_google_client_id_permission(request: Request) -> dict[str, Any]:
     """
-    Allow configuring GOOGLE_CLIENT_ID on local development (even from the unauthenticated Login page)
-    while strictly protecting it on Cloud Run / Production.
+    Require either a valid X-Admin-Token or an authenticated local developer session
+    before allowing GOOGLE_CLIENT_ID mutation (blocks unauthenticated overwrites).
     """
     session = get_optional_session(request)
     if _has_valid_admin_token(request):
         return session or {"role": "admin"}
-    if not settings.is_cloud_run and not settings.admin_token:
-        return session or {"role": "local_dev"}
     if not session:
         raise ApiError(
             status_code=401,
             code="UNAUTHORIZED",
             message="Phiên đăng nhập chưa được xác thực hoặc đã hết hạn. Vui lòng đăng nhập lại.",
         )
+    if not settings.is_cloud_run and not settings.admin_token:
+        return session
     raise ApiError(
         status_code=403,
         code="FORBIDDEN_IN_PRODUCTION",
@@ -467,10 +508,18 @@ def _is_trusted_csrf_request(request: Request) -> bool:
         return True
 
     source_origin, fetch_site = _extract_origin_from_headers(request)
-    if fetch_site == "cross-site":
+    if fetch_site in {"cross-site", "same-site"}:
         return False
 
     if source_origin is None:
+        if fetch_site and fetch_site not in {"same-origin", "none"}:
+            return False
+        ctype = request.headers.get("content-type", "").split(";")[0].strip().lower()
+        if ctype in {"application/x-www-form-urlencoded", "text/plain"}:
+            return False
+        ua = request.headers.get("user-agent", "").lower()
+        if "mozilla/" in ua and fetch_site != "same-origin":
+            return False
         return True
     if source_origin == "null":
         return False

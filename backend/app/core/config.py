@@ -60,7 +60,12 @@ class AppConfig(BaseModel):
         "GOOGLE_CLIENT_ID",
         "407438910099-fbr88s4baevcju84kqumkt9mkks9v60h.apps.googleusercontent.com",
     ).strip()
-    is_cloud_run: bool = bool(os.environ.get("K_SERVICE", "").strip())
+    is_cloud_run: bool = bool(
+        os.environ.get("K_SERVICE", "").strip()
+        or os.environ.get("CLOUD_RUN_JOB", "").strip()
+        or os.environ.get("KUBERNETES_SERVICE_HOST", "").strip()
+        or os.environ.get("APP_ENV", "").strip().lower() == "production"
+    )
     admin_token: str = os.environ.get("ADMIN_TOKEN", "").strip()
     session_secret: str = _get_session_secret()
     session_ttl_seconds: int = int(os.environ.get("SESSION_TTL_SECONDS", "86400"))
