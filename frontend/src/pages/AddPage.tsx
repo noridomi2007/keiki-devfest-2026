@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -49,9 +49,27 @@ export function AddPage({
     }
   );
 
+  const handleFileUpload = useCallback(
+    async (file: File | Blob, kind: DocumentKind, filename?: string) => {
+      setErrorMsg(null);
+      setInfoMsg(null);
+      setIsUploading(true);
+      try {
+        const res = await api.uploadDocument(file, kind, filename);
+        setActiveJobId(res.job_id);
+      } catch (err) {
+        setErrorMsg(err instanceof Error ? err.message : 'Không thể tải tệp lên.');
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    []
+  );
+
   // Listen for Ctrl+V clipboard image paste anywhere on AddPage
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
+      if (isUploading || isRunning) return;
       const items = e.clipboardData?.items;
       if (!items) return;
       for (const item of Array.from(items)) {
@@ -67,21 +85,7 @@ export function AddPage({
     };
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
-  }, []);
-
-  const handleFileUpload = async (file: File | Blob, kind: DocumentKind, filename?: string) => {
-    setErrorMsg(null);
-    setInfoMsg(null);
-    setIsUploading(true);
-    try {
-      const res = await api.uploadDocument(file, kind, filename);
-      setActiveJobId(res.job_id);
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Không thể tải tệp lên.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
+  }, [handleFileUpload, isUploading, isRunning]);
 
   const handleClipboardButton = async () => {
     setErrorMsg(null);

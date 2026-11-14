@@ -14,7 +14,7 @@ REPORT_OUT = Path(__file__).resolve().parent.parent.parent / "EVAL_RESULTS.md"
 
 
 async def run_evaluation() -> dict[str, object]:
-    repo = MemoryRepo()
+    repo = MemoryRepo(persist=False)
     # Clear pre-seeded transactions so evaluation starts cleanly in chronological order
     repo.transactions.clear()
     repo.documents.clear()
@@ -45,7 +45,11 @@ async def run_evaluation() -> dict[str, object]:
             filename=row["file"],
             preset_hint=row.get("preset_hint"),
         )
-        ctx = AgentContext(household_id="demo", repo=repo, settings=AgentSettings())
+        ctx = AgentContext(
+            household_id="demo",
+            repo=repo,
+            settings=AgentSettings(reference_date="2026-11-12"),
+        )
 
         t0 = time.perf_counter()
         done_data = None

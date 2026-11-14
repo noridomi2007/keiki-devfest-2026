@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import statistics
+from agent.normalize import normalize_text
 from agent.report import summarize_report
 from backend.app.config import settings
 from backend.app.models import (
@@ -83,16 +85,42 @@ async def build_report(
     price_increases: list[PriceIncreaseAlert] = []
     for t in all_tx:
         if any(w.code == "PRICE_ANOMALY" for w in t.warnings) and t.items:
-            first_item = t.items[0]
-            price_increases.append(
-                PriceIncreaseAlert(
-                    item=first_item.name,
-                    counterparty=t.counterparty or "Nhà cung cấp",
-                    old_vnd=180000,
-                    new_vnd=first_item.unit_price_vnd,
-                    pct=round(((first_item.unit_price_vnd - 180000) / 180000) * 100, 1),
+            cp_norm = normalize_text(t.counterparty) or None
+            matched_any = False
+            for item in t.items:
+                item_norm = normalize_text(item.name)
+                pts = await repo.price_history(
+                    household_id=household_id,
+                    item_norm=item_norm,
+                    counterparty_norm=cp_norm,
+                    limit=10,
                 )
-            )
+                hist_vals = [p.unit_price_vnd for p in pts if p.unit_price_vnd > 0 and p.date != t.date]
+                if not hist_vals:
+                    hist_vals = [p.unit_price_vnd for p in pts if p.unit_price_vnd > 0]
+                med_vnd = int(round(statistics.median(hist_vals))) if len(hist_vals) >= 3 else 180000
+                if med_vnd > 0 and abs(item.unit_price_vnd - med_vnd) / med_vnd > 0.30:
+                    matched_any = True
+                    price_increases.append(
+                        PriceIncreaseAlert(
+                            item=item.name,
+                            counterparty=t.counterparty or "Nhà cung cấp",
+                            old_vnd=med_vnd,
+                            new_vnd=item.unit_price_vnd,
+                            pct=round(((item.unit_price_vnd - med_vnd) / med_vnd) * 100, 1),
+                        )
+                    )
+            if not matched_any:
+                first_item = t.items[0]
+                price_increases.append(
+                    PriceIncreaseAlert(
+                        item=first_item.name,
+                        counterparty=t.counterparty or "Nhà cung cấp",
+                        old_vnd=180000,
+                        new_vnd=first_item.unit_price_vnd,
+                        pct=round(((first_item.unit_price_vnd - 180000) / 180000) * 100, 1),
+                    )
+                )
 
     # Bank Loan Readiness score
     total_rec = len(recorded_tx)

@@ -163,6 +163,7 @@ class AgentSettings(BaseModel):
     total_tolerance_pct: float = 0.01
     total_tolerance_min_vnd: int = 1000
     cache_dir: str | None = None
+    reference_date: str | None = None
 
 
 @runtime_checkable

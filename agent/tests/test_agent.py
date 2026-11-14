@@ -68,7 +68,7 @@ async def test_extract_from_image_requires_api_key_no_hardcoded_fallback(monkeyp
 
 @pytest.mark.asyncio
 async def test_cross_duplicate_and_price_anomaly():
-    repo = MemoryRepo()
+    repo = MemoryRepo(persist=False)
     hid = "hh_test_01"
     repo.save_transaction(
         Transaction(
@@ -124,7 +124,7 @@ async def test_cross_duplicate_and_price_anomaly():
 
 @pytest.mark.asyncio
 async def test_tax_code_and_category():
-    repo = MemoryRepo()
+    repo = MemoryRepo(persist=False)
     ext_suspended = ExtractionResult(tax_code="0401999000")
     w = await lookup_tax_code_warning(ext_suspended, repo)
     assert len(w) == 1

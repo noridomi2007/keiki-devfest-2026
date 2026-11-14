@@ -22,9 +22,19 @@ import { formatVnd } from '../utils/money';
 import { speakVietnamese } from '../utils/speech';
 import { AppIcon } from '@/components/AppIcon';
 
-export function ReportPage() {
+interface ReportPageProps {
+  month?: string;
+  onMonthChange?: (month: string) => void;
+}
+
+export function ReportPage({ month: controlledMonth, onMonthChange }: ReportPageProps = {}) {
   const [report, setReport] = useState<ReportResponse | null>(null);
-  const [month, setMonth] = useState('2026-11');
+  const [internalMonth, setInternalMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const month = controlledMonth ?? internalMonth;
+  const setMonth = (nextMonth: string) => {
+    setInternalMonth(nextMonth);
+    onMonthChange?.(nextMonth);
+  };
   const [loading, setLoading] = useState(true);
   const [lockBusy, setLockBusy] = useState(false);
   const [lockError, setLockError] = useState<string | null>(null);

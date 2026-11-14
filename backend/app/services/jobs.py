@@ -66,6 +66,34 @@ class JobRunner:
                     tx_dict = dict(ev.data["transaction"])
                     tx_id = f"txn_{uuid.uuid4().hex[:8]}"
                     tx_dict["id"] = tx_id
+                    now_iso = tx_dict.get("created_at") or ""
+                    tx_date = str(tx_dict.get("date") or "")
+                    decision = str(ev.data.get("decision") or tx_dict.get("status") or "needs_review")
+                    clarification = ev.data.get("clarification_question") or tx_dict.get("clarification_question")
+
+                    if self.repo.is_period_locked(household_id, tx_date) and decision == "recorded":
+                        decision = "needs_review"
+                        tx_dict["status"] = "needs_review"
+                        month_label = tx_date[:7] if len(tx_date) >= 7 else tx_date
+                        lock_msg = (
+                            f"Kỳ sổ tháng {month_label} đang chốt khóa. "
+                            f"Bút toán được tạm giữ ở mục Cần hỏi lại cho tới khi mở khóa kỳ sổ."
+                        )
+                        clarification = clarification or lock_msg
+                        tx_dict["clarification_question"] = clarification
+
+                    if not tx_dict.get("audit_log"):
+                        amt_val = int(tx_dict.get("amount_vnd") or 0)
+                        amt_str = f"{amt_val:,}".replace(",", ".") + " đ"
+                        tx_dict["audit_log"] = [
+                            {
+                                "timestamp": now_iso,
+                                "action": "created",
+                                "actor": "Keiki AI Agent",
+                                "summary": f"Trích xuất tự động chứng từ ({amt_str})",
+                            }
+                        ]
+
                     tx = Transaction.model_validate(tx_dict)
                     self.repo.save_transaction(tx)
                     job.transaction_id = tx_id
@@ -85,12 +113,16 @@ class JobRunner:
                         job_id=job_id,
                         seq=ev.seq + 1,
                         step="done",
-                        status=ev.status,
-                        message=ev.message,
+                        status="ok" if decision == "recorded" else "warn",
+                        message=(
+                            ev.message
+                            if decision == "recorded"
+                            else (clarification or "Đã chuyển vào mục Cần hỏi lại để xác nhận.")
+                        ),
                         data={
                             "transaction_id": tx_id,
-                            "decision": ev.data.get("decision", tx.status),
-                            "clarification_question": ev.data.get("clarification_question"),
+                            "decision": decision,
+                            "clarification_question": clarification,
                             "transaction": tx.model_dump(),
                         },
                     )

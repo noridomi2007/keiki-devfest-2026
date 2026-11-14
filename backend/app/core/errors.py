@@ -31,3 +31,17 @@ async def api_error_handler(_: Request, exc: ApiError) -> JSONResponse:
             }
         },
     )
+
+
+async def unhandled_exception_handler(_: Request, _exc: Exception) -> JSONResponse:
+    """Prevent stack traces, internal file paths, or SDK internals from leaking on 500 errors."""
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": "Đã xảy ra lỗi hệ thống nội bộ. Vui lòng thử lại sau.",
+                "details": {},
+            }
+        },
+    )

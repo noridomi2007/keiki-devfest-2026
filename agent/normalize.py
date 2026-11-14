@@ -133,9 +133,20 @@ def parse_vnd_amount(raw: int | float | str | None) -> int | None:
     return None
 
 
-def normalize_date(raw: str | None, reference_date: date | None = None) -> str | None:
+def _resolve_ref_date(reference_date: date | str | None = None) -> date:
+    if isinstance(reference_date, date):
+        return reference_date
+    if isinstance(reference_date, str) and reference_date.strip():
+        try:
+            return date.fromisoformat(reference_date.strip()[:10])
+        except ValueError:
+            pass
+    return date.today()
+
+
+def normalize_date(raw: str | None, reference_date: date | str | None = None) -> str | None:
     """Normalize Vietnamese dates and Central dialect time words ('sáng ni', 'bữa qua') to YYYY-MM-DD."""
-    ref = reference_date or date(2026, 11, 12)
+    ref = _resolve_ref_date(reference_date)
     if not raw:
         return None
     s = raw.strip().lower()
@@ -167,9 +178,9 @@ def normalize_date(raw: str | None, reference_date: date | None = None) -> str |
     return None
 
 
-def normalize_extraction(ext: ExtractionResult, reference_date: date | None = None) -> ExtractionResult:
+def normalize_extraction(ext: ExtractionResult, reference_date: date | str | None = None) -> ExtractionResult:
     """Normalize all fields inside ExtractionResult in-place/copy."""
-    ref = reference_date or date(2026, 11, 12)
+    ref = _resolve_ref_date(reference_date)
     norm_date = normalize_date(ext.date, ref)
     if not norm_date and ext.transcript:
         norm_date = normalize_date(ext.transcript, ref)

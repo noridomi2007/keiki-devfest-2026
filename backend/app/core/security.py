@@ -232,6 +232,29 @@ async def require_secret_mutation_permission(
     )
 
 
+async def require_google_client_id_permission(request: Request) -> dict[str, Any]:
+    """
+    Allow configuring GOOGLE_CLIENT_ID on local development (even from the unauthenticated Login page)
+    while strictly protecting it on Cloud Run / Production.
+    """
+    session = get_optional_session(request)
+    if _has_valid_admin_token(request):
+        return session or {"role": "admin"}
+    if not settings.is_cloud_run and not settings.admin_token:
+        return session or {"role": "local_dev"}
+    if not session:
+        raise ApiError(
+            status_code=401,
+            code="UNAUTHORIZED",
+            message="Phiên đăng nhập chưa được xác thực hoặc đã hết hạn. Vui lòng đăng nhập lại.",
+        )
+    raise ApiError(
+        status_code=403,
+        code="FORBIDDEN_IN_PRODUCTION",
+        message="Khóa hệ thống trên Cloud / Production đã được bảo vệ cố định, không cho phép ghi đè từ trình duyệt.",
+    )
+
+
 async def read_upload_bounded(file: UploadFile, max_bytes: int) -> bytes:
     """Read an uploaded file in 64KB chunks, aborting immediately if size exceeds max_bytes."""
     chunks: list[bytes] = []

@@ -41,7 +41,7 @@ export function LedgerPage({
   const [txActionError, setTxActionError] = useState<string | null>(null);
 
   // Manual entry form state
-  const [manualDate, setManualDate] = useState('2026-11-12');
+  const [manualDate, setManualDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [manualType, setManualType] = useState<'revenue' | 'expense'>('revenue');
   const [manualAmount, setManualAmount] = useState('500000');
   const [manualCounterparty, setManualCounterparty] = useState('');

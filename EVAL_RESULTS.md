@@ -8,4 +8,4 @@
 | **Tỷ lệ Tự ghi sổ đúng (Auto-Record Precision)** | **100.0%** (2/2) | Không có giao dịch sai nào bị tự ý ghi vào sổ |
 | **Bắt trùng chéo Hóa đơn ↔ Chuyển khoản (`CROSS_DUPLICATE`)** | **100.0%** (1/1) | Phát hiện và gợi ý gộp chứng từ thành công |
 | Độ chính xác Quyết định (`recorded` vs `needs_review`) | **100.0%** (6/6) | Chặn đúng 100% ca giá bất thường, lệch tổng và mơ hồ |
-| Độ trễ xử lý trung bình (Pipeline Latency) | **1068.0 ms** | Luồng sự kiện SSE thời gian thực |
+| Độ trễ xử lý trung bình (Pipeline Latency) | **1037.3 ms** | Luồng sự kiện SSE thời gian thực |

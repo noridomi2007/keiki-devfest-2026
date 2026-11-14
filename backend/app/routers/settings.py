@@ -7,7 +7,11 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
-from backend.app.core.security import get_optional_session, require_secret_mutation_permission
+from backend.app.core.security import (
+    get_optional_session,
+    require_google_client_id_permission,
+    require_secret_mutation_permission,
+)
 from backend.app.models import ApiKeyUpdateRequest
 from backend.app.repositories import repo
 
@@ -89,7 +93,7 @@ async def clear_gemini_apikey(
 @router.post("/google-client-id")
 async def update_google_client_id(
     payload: GoogleClientIdUpdateRequest,
-    _admin: dict[str, Any] = Depends(require_secret_mutation_permission),
+    _admin: dict[str, Any] = Depends(require_google_client_id_permission),
 ) -> dict[str, object]:
     clean_id = payload.google_client_id.strip()
     settings.google_client_id = clean_id

@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.core.config import settings
-from backend.app.core.errors import ApiError, api_error_handler
+from backend.app.core.errors import ApiError, api_error_handler, unhandled_exception_handler
 from backend.app.core.security import SecurityShieldMiddleware
 from backend.app.routers import (
     agent_chat,
@@ -27,6 +27,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url=None,
     redoc_url=None,
+    openapi_url=None if settings.is_cloud_run else "/openapi.json",
 )
 
 app.add_middleware(SecurityShieldMiddleware)
@@ -41,6 +42,7 @@ app.add_middleware(
 )
 
 app.add_exception_handler(ApiError, api_error_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
 
 app.include_router(auth.router)
 app.include_router(household.router)

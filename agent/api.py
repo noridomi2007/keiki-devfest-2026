@@ -105,7 +105,7 @@ async def process_document(
     await asyncio.sleep(0.15)
 
     # Step 4: Normalize currency, dates & tax category
-    ext = normalize_extraction(raw_ext)
+    ext = normalize_extraction(raw_ext, reference_date=ctx.settings.reference_date)
     category, tax_group = classify_category_and_tax(ext)
     ext = ext.model_copy(update={"category": category, "tax_group": tax_group})
 
@@ -199,12 +199,13 @@ async def process_document(
     seq += 1
 
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    fallback_date = (ctx.settings.reference_date or now_iso[:10])[:10]
     tx_draft = {
         "household_id": ctx.household_id,
         "document_id": doc.document_id,
         "linked_document_ids": [doc.document_id] if doc.document_id else [],
         "duplicate_of_id": duplicate_of_id,
-        "date": ext.date or "2026-11-12",
+        "date": ext.date or fallback_date,
         "type": ext.type or "expense",
         "category": ext.category,
         "tax_group": ext.tax_group or "khong_tinh_thue",

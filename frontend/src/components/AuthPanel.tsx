@@ -257,11 +257,11 @@ export function AuthPanel({
     setErrorMsg(null);
     try {
       await api.updateGoogleClientId(cleaned);
-      setGoogleClientId(cleaned);
-      launchRealGooglePopup(cleaned);
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Không thể lưu Google Client ID.');
+    } catch {
+      // On locked production servers, still allow client-side popup with the entered Client ID
     }
+    setGoogleClientId(cleaned);
+    await launchRealGooglePopup(cleaned);
   };
 
   const formColumn = (

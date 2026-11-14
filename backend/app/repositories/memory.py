@@ -23,7 +23,7 @@ class MemoryRepo:
     MAX_TRANSACTIONS = 10000
     MAX_JOBS = 2000
 
-    def __init__(self) -> None:
+    def __init__(self, persist: bool = True) -> None:
         self.documents: dict[str, DocumentRecord] = {}
         self.transactions: dict[str, Transaction] = {}
         self.jobs: dict[str, JobRecord] = {}
@@ -33,7 +33,15 @@ class MemoryRepo:
         self.users: dict[str, dict[str, str]] = {}
         self.locked_periods: dict[str, dict[str, str]] = {}
         self.household_info: dict[str, str] = {}
-        self._persistence_enabled: bool = True
+        self._persistence_enabled: bool = persist
+        self._firestore_db: Any = None
+        if persist and os.environ.get("GCP_PROJECT", "").strip():
+            try:
+                from google.cloud import firestore
+
+                self._firestore_db = firestore.Client(project=os.environ.get("GCP_PROJECT", "").strip())
+            except Exception:
+                self._firestore_db = None
         self._load_reference_data()
         self._load_snapshot()
 
@@ -61,35 +69,54 @@ class MemoryRepo:
                 self.price_points.append(PricePoint.model_validate(row))
 
     def _load_snapshot(self) -> None:
-        if not self._persistence_enabled or not STATE_FILE.exists():
+        if not self._persistence_enabled:
+            return
+        if self._firestore_db is not None:
+            try:
+                doc_snap = self._firestore_db.collection("keiki_state").document("runtime_snapshot").get()
+                if doc_snap.exists:
+                    payload = doc_snap.to_dict() or {}
+                    self._apply_snapshot_payload(payload)
+                    return
+            except Exception:
+                pass
+        if not STATE_FILE.exists():
             return
         try:
             payload = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-            for hid, hh in (payload.get("households") or {}).items():
-                self.households[str(hid)] = dict(hh)
-            for phone, usr in (payload.get("users") or {}).items():
-                self.users[str(phone)] = dict(usr)
-            for doc_id, doc_raw in (payload.get("documents") or {}).items():
-                self.documents[str(doc_id)] = DocumentRecord.model_validate(doc_raw)
-            for tx_id, tx_raw in (payload.get("transactions") or {}).items():
-                self.transactions[str(tx_id)] = Transaction.model_validate(tx_raw)
-            for lock_key, lock_info in (payload.get("locked_periods") or {}).items():
-                self.locked_periods[str(lock_key)] = dict(lock_info)
+            self._apply_snapshot_payload(payload)
         except Exception:
             pass
+
+    def _apply_snapshot_payload(self, payload: dict[str, Any]) -> None:
+        for hid, hh in (payload.get("households") or {}).items():
+            self.households[str(hid)] = dict(hh)
+        for phone, usr in (payload.get("users") or {}).items():
+            self.users[str(phone)] = dict(usr)
+        for doc_id, doc_raw in (payload.get("documents") or {}).items():
+            self.documents[str(doc_id)] = DocumentRecord.model_validate(doc_raw)
+        for tx_id, tx_raw in (payload.get("transactions") or {}).items():
+            self.transactions[str(tx_id)] = Transaction.model_validate(tx_raw)
+        for lock_key, lock_info in (payload.get("locked_periods") or {}).items():
+            self.locked_periods[str(lock_key)] = dict(lock_info)
 
     def _save_snapshot(self) -> None:
         if not self._persistence_enabled:
             return
+        payload = {
+            "households": self.households,
+            "users": self.users,
+            "documents": {k: v.model_dump() for k, v in self.documents.items()},
+            "transactions": {k: v.model_dump() for k, v in self.transactions.items()},
+            "locked_periods": self.locked_periods,
+        }
+        if self._firestore_db is not None:
+            try:
+                self._firestore_db.collection("keiki_state").document("runtime_snapshot").set(payload)
+            except Exception:
+                pass
         try:
             STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-            payload = {
-                "households": self.households,
-                "users": self.users,
-                "documents": {k: v.model_dump() for k, v in self.documents.items()},
-                "transactions": {k: v.model_dump() for k, v in self.transactions.items()},
-                "locked_periods": self.locked_periods,
-            }
             tmp_path = STATE_FILE.with_suffix(".tmp")
             tmp_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
             os.replace(tmp_path, STATE_FILE)
@@ -247,11 +274,35 @@ class MemoryRepo:
         counterparty_norm: str | None = None,
         limit: int = 10,
     ) -> list[PricePoint]:
-        pts = [
+        pts: list[PricePoint] = [
             p
             for p in self.price_points
             if item_norm in p.item_norm or p.item_norm in item_norm
         ]
+        if household_id:
+            for tx in self.transactions.values():
+                if tx.household_id != household_id or tx.status != "recorded" or tx.type != "expense":
+                    continue
+                tx_cp_norm = normalize_text(tx.counterparty) or None
+                for it in tx.items:
+                    it_norm = normalize_text(it.name)
+                    if it_norm and it.unit_price_vnd > 0 and (item_norm in it_norm or it_norm in item_norm):
+                        pts.append(
+                            PricePoint(
+                                item_norm=it_norm,
+                                counterparty_norm=tx_cp_norm,
+                                unit_price_vnd=it.unit_price_vnd,
+                                date=tx.date,
+                            )
+                        )
+        if counterparty_norm:
+            cp_pts = [
+                p
+                for p in pts
+                if p.counterparty_norm and (counterparty_norm in p.counterparty_norm or p.counterparty_norm in counterparty_norm)
+            ]
+            if len(cp_pts) >= 3:
+                return cp_pts[-limit:]
         return pts[-limit:]
 
     async def lookup_tax_code(self, tax_code: str) -> TaxCodeInfo | None:

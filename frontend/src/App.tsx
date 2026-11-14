@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { api, type HouseholdLoginPayload } from './api/endpoints';
 import { AgentCopilotModal } from './components/AgentCopilotModal';
@@ -44,11 +45,19 @@ export function App() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [mobilePreview, setMobilePreview] = useState(false);
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
+  const [activeMonth, setActiveMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [apiModelInput, setApiModelInput] = useState('gemini-3.1-flash-lite');
+  const [apiBusy, setApiBusy] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const loadData = useCallback(async (forceFetchTransactions = false) => {
     try {
       const stRes = await api.getSettingsStatus();
       setSettingsStatus(stRes);
+      if (stRes.gemini_model) {
+        setApiModelInput(stRes.gemini_model);
+      }
       if (stRes.authenticated || forceFetchTransactions) {
         setIsLoggedIn(true);
         const txRes = await api.listTransactions();
@@ -58,6 +67,41 @@ export function App() {
       // ignore initial fetch error
     }
   }, []);
+
+  const handleSaveApiKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!apiKeyInput.trim()) return;
+    setApiBusy(true);
+    setApiError(null);
+    try {
+      const res = await api.updateApiKey(apiKeyInput.trim(), apiModelInput);
+      setApiKeyInput('');
+      setShowApiModal(false);
+      setStatusBanner(res.message || 'Đã lưu khóa Google Gemini API thành công!');
+      await loadData();
+      setTimeout(() => setStatusBanner(null), 4000);
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : 'Không thể lưu khóa Gemini API.');
+    } finally {
+      setApiBusy(false);
+    }
+  };
+
+  const handleClearApiKey = async () => {
+    setApiBusy(true);
+    setApiError(null);
+    try {
+      const res = await api.clearApiKey();
+      setShowApiModal(false);
+      setStatusBanner(res.message || 'Đã xóa khóa Gemini API khỏi bộ nhớ phiên.');
+      await loadData();
+      setTimeout(() => setStatusBanner(null), 4000);
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : 'Không thể xóa khóa Gemini API.');
+    } finally {
+      setApiBusy(false);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -362,7 +406,9 @@ export function App() {
                 {activeTab === 'review' && (
                   <ReviewPage allTransactions={transactions} onUpdated={loadData} />
                 )}
-                {activeTab === 'report' && <ReportPage />}
+                {activeTab === 'report' && (
+                  <ReportPage month={activeMonth} onMonthChange={setActiveMonth} />
+                )}
               </motion.div>
             </AnimatePresence>
           ) : (
@@ -402,7 +448,9 @@ export function App() {
                     {activeTab === 'review' && (
                       <ReviewPage allTransactions={transactions} onUpdated={loadData} />
                     )}
-                    {activeTab === 'report' && <ReportPage />}
+                    {activeTab === 'report' && (
+                      <ReportPage month={activeMonth} onMonthChange={setActiveMonth} />
+                    )}
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -522,6 +570,7 @@ export function App() {
       <AgentCopilotModal
         open={showAgentModal}
         onOpenChange={setShowAgentModal}
+        month={activeMonth}
         onDataChanged={() => void loadData()}
       />
 
@@ -572,7 +621,79 @@ export function App() {
                 </Button>
               </DialogFooter>
             </div>
-          ) : null}
+          ) : (
+            <form onSubmit={handleSaveApiKey} className="space-y-4 p-5">
+              {settingsStatus?.gemini_configured && (
+                <div className="rounded-xl border border-[#0B6E54]/30 bg-emerald-50/80 p-3 text-xs leading-relaxed text-[#0B6E54]">
+                  <strong>Đang hoạt động:</strong> Đã cấu hình khóa Google Gemini API với mô hình{' '}
+                  <code>{settingsStatus.gemini_model}</code>.
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-[#111625]">
+                  Khóa GEMINI_API_KEY (từ Google AI Studio / Google Cloud)
+                </label>
+                <Input
+                  type="password"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  placeholder="AIzaSy... hoặc AQ..."
+                  required
+                  className="mt-1 font-mono text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#111625]">
+                  Mô hình Gemini sử dụng
+                </label>
+                <select
+                  value={apiModelInput}
+                  onChange={(e) => setApiModelInput(e.target.value)}
+                  className="mt-1 h-10 w-full rounded-xl border border-border bg-[#F6F8FB] px-3 font-mono text-xs font-semibold text-[#111625]"
+                >
+                  <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (Nhanh &amp; Tối ưu)</option>
+                  <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                  <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                </select>
+              </div>
+
+              {apiError && (
+                <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-xs font-medium text-[#B91C1C]">
+                  {apiError}
+                </div>
+              )}
+
+              <DialogFooter className="flex flex-wrap justify-between gap-2">
+                {settingsStatus?.gemini_configured && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={apiBusy}
+                    onClick={handleClearApiKey}
+                    className="border-red-200 text-xs font-bold text-[#B91C1C] hover:bg-red-50"
+                  >
+                    Xóa khóa khỏi phiên
+                  </Button>
+                )}
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowApiModal(false)}
+                  >
+                    Đóng
+                  </Button>
+                  <Button type="submit" size="sm" disabled={apiBusy || !apiKeyInput.trim()}>
+                    Lưu cấu hình Gemini
+                  </Button>
+                </div>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </>
