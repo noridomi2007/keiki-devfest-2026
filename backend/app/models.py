@@ -51,10 +51,10 @@ class TransactionCreateRequest(BaseModel):
     category: CategoryType | None = None
     tax_group: TaxGroupType | None = None
     payment_method: PaymentMethodType = "cash"
-    amount_vnd: int = Field(gt=0)
-    counterparty: str | None = None
-    tax_code: str | None = None
-    items: list[Item] = Field(default_factory=list)
+    amount_vnd: int = Field(gt=0, le=100_000_000_000)
+    counterparty: str | None = Field(default=None, max_length=240)
+    tax_code: str | None = Field(default=None, max_length=25)
+    items: list[Item] = Field(default_factory=list, max_length=100)
 
 
 class TransactionPatchRequest(BaseModel):
@@ -63,10 +63,10 @@ class TransactionPatchRequest(BaseModel):
     category: CategoryType | None = None
     tax_group: TaxGroupType | None = None
     payment_method: PaymentMethodType | None = None
-    amount_vnd: int | None = Field(default=None, gt=0)
-    counterparty: str | None = None
-    tax_code: str | None = None
-    items: list[Item] | None = None
+    amount_vnd: int | None = Field(default=None, gt=0, le=100_000_000_000)
+    counterparty: str | None = Field(default=None, max_length=240)
+    tax_code: str | None = Field(default=None, max_length=25)
+    items: list[Item] | None = Field(default=None, max_length=100)
     status: TransactionStatus | None = None
 
 

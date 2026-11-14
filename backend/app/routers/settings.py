@@ -7,8 +7,10 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
+from backend.app.core.errors import ApiError
 from backend.app.core.security import (
     get_optional_session,
+    is_loopback_request,
     require_google_client_id_permission,
     require_secret_mutation_permission,
 )
@@ -52,9 +54,9 @@ async def get_settings_status(request: Request) -> dict[str, object]:
         "gemini_configured": active_key,
         "gemini_model": settings.gemini_model,
         "google_client_id": settings.google_client_id or os.environ.get("GOOGLE_CLIENT_ID", "").strip(),
-        "gcp_project": settings.gcp_project or None,
+        "gcp_project": (settings.gcp_project or None) if session else None,
         "household": repo.get_household(hid) if session else None,
-        "lan_urls": _get_lan_urls(settings.port) if session else [],
+        "lan_urls": _get_lan_urls(settings.port) if (session and is_loopback_request(request)) else [],
     }
 
 
@@ -96,6 +98,12 @@ async def update_google_client_id(
     _admin: dict[str, Any] = Depends(require_google_client_id_permission),
 ) -> dict[str, object]:
     clean_id = payload.google_client_id.strip()
+    if not clean_id:
+        raise ApiError(
+            status_code=400,
+            code="INVALID_GOOGLE_CLIENT_ID",
+            message="Google OAuth Client ID không được để trống.",
+        )
     settings.google_client_id = clean_id
     os.environ["GOOGLE_CLIENT_ID"] = clean_id
     return {

@@ -46,10 +46,10 @@ WarningSeverity = Literal["high", "medium", "info"]
 
 
 class Item(BaseModel):
-    name: str
-    quantity: float = 1.0
-    unit_price_vnd: int = Field(ge=0)
-    line_total_vnd: int = Field(ge=0)
+    name: str = Field(min_length=1, max_length=240)
+    quantity: float = Field(default=1.0, ge=0.0, le=1_000_000.0, allow_inf_nan=False)
+    unit_price_vnd: int = Field(ge=0, le=100_000_000_000)
+    line_total_vnd: int = Field(ge=0, le=100_000_000_000)
 
 
 class Warning(BaseModel):

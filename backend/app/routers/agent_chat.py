@@ -28,6 +28,19 @@ router = APIRouter(
 )
 
 
+_UNRESOLVED_ORIGINAL_WARNINGS = {"PRICE_ANOMALY", "TOTAL_MISMATCH", "TAX_CODE_NOT_FOUND"}
+_MERGE_NEGATION_PHRASES = (
+    "dung gop",
+    "khong gop",
+    "khong nen gop",
+    "khoan gop",
+    "chua gop",
+    "co nen gop",
+    "tai sao gop",
+    "cach gop",
+)
+
+
 def _fmt_vnd(amount: int) -> str:
     return f"{int(amount):,}".replace(",", ".") + " đ"
 
@@ -168,6 +181,9 @@ async def _tool_execute_merge_duplicate(hid: str, actor: str) -> tuple[AgentChat
             merged_docs.append(did)
 
     new_payment = "transfer" if dup_tx.payment_method == "transfer" else orig_tx.payment_method
+    orig_has_unresolved = orig_tx.status == "needs_review" and any(
+        w.code in _UNRESOLVED_ORIGINAL_WARNINGS for w in orig_tx.warnings
+    )
     orig_log = list(orig_tx.audit_log)
     orig_log.append(
         AuditLogEntry(
@@ -181,8 +197,8 @@ async def _tool_execute_merge_duplicate(hid: str, actor: str) -> tuple[AgentChat
         update={
             "linked_document_ids": merged_docs,
             "payment_method": new_payment,
-            "status": "recorded",
-            "clarification_question": None,
+            "status": "needs_review" if orig_has_unresolved else "recorded",
+            "clarification_question": orig_tx.clarification_question if orig_has_unresolved else None,
             "audit_log": orig_log,
             "updated_at": now_iso,
         }
@@ -266,8 +282,11 @@ async def chat_with_agent(
     tool_outputs: dict[str, Any] = {}
     data_updated = False
 
-    wants_merge = any(k in norm for k in ("gop", "merge", "xu ly trung"))
-    wants_pending = wants_merge or any(k in norm for k in ("trung", "vietqr", "can hoi", "cho duyet"))
+    has_merge_negation = any(neg in norm for neg in _MERGE_NEGATION_PHRASES)
+    wants_merge = (not has_merge_negation) and any(k in norm for k in ("gop", "merge", "xu ly trung"))
+    wants_pending = wants_merge or has_merge_negation or any(
+        k in norm for k in ("trung", "vietqr", "can hoi", "cho duyet")
+    )
     wants_expense = any(k in norm for k in ("chi nhieu", "ton nhat", "chi phi", "gia", "bat thuong", "top"))
     wants_compliance = any(
         k in norm for k in ("152", "thue", "nguong", "500", "vay", "ngan hang", "ho so", "so sach", "mau so")

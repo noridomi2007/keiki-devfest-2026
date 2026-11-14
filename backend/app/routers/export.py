@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
@@ -23,7 +24,8 @@ async def export_ledger(
 ) -> Response:
     hid = str(session.get("hid", ""))
     if evidence:
-        zip_bytes = generate_export_zip(
+        zip_bytes = await asyncio.to_thread(
+            generate_export_zip,
             repo=repo,
             month=month,
             household_id=hid,
@@ -35,7 +37,8 @@ async def export_ledger(
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
-    xlsx_bytes = generate_tt152_excel(
+    xlsx_bytes = await asyncio.to_thread(
+        generate_tt152_excel,
         repo=repo,
         month=month,
         household_id=hid,

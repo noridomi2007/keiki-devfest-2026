@@ -16,7 +16,9 @@ from backend.app.models import (
     TransactionPatchRequest,
 )
 from backend.app.repositories import repo
-from backend.app.core.security import require_session, validate_safe_id
+from backend.app.core.security import require_session, sanitize_prompt_input, validate_safe_id
+
+_UNRESOLVED_ORIGINAL_WARNINGS = {"PRICE_ANOMALY", "TOTAL_MISMATCH", "TAX_CODE_NOT_FOUND"}
 
 router = APIRouter(
     prefix="/api/transactions",
@@ -90,14 +92,20 @@ async def create_manual_transaction(
     actor = str(session.get("owner") or "Chủ hộ")
     _ensure_period_unlocked(hid, payload.date)
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    clean_counterparty = sanitize_prompt_input(payload.counterparty, max_len=240) or None
+    clean_tax_code = sanitize_prompt_input(payload.tax_code, max_len=25) or None
+    clean_items = [
+        it.model_copy(update={"name": sanitize_prompt_input(it.name, max_len=240) or "Hàng hóa"})
+        for it in payload.items
+    ]
     ext_tmp = ExtractionResult(
         date=payload.date,
         type=payload.type,
         category=payload.category,
         tax_group=payload.tax_group,
         amount_vnd=payload.amount_vnd,
-        counterparty=payload.counterparty,
-        items=payload.items,
+        counterparty=clean_counterparty,
+        items=clean_items,
     )
     cat, tax_grp = classify_category_and_tax(ext_tmp)
     amt_str = f"{payload.amount_vnd:,}".replace(",", ".") + " đ"
@@ -113,9 +121,9 @@ async def create_manual_transaction(
         tax_group=payload.tax_group or tax_grp,
         payment_method=payload.payment_method,
         amount_vnd=payload.amount_vnd,
-        counterparty=payload.counterparty,
-        tax_code=payload.tax_code,
-        items=payload.items,
+        counterparty=clean_counterparty,
+        tax_code=clean_tax_code,
+        items=clean_items,
         transcript=None,
         confidence={},
         status="recorded",
@@ -150,6 +158,15 @@ async def patch_transaction(
     updates = payload.model_dump(exclude_unset=True)
     if "date" in updates and updates["date"]:
         _ensure_period_unlocked(hid, str(updates["date"]))
+    if "counterparty" in updates:
+        updates["counterparty"] = sanitize_prompt_input(updates["counterparty"], max_len=240) or None
+    if "tax_code" in updates:
+        updates["tax_code"] = sanitize_prompt_input(updates["tax_code"], max_len=25) or None
+    if "items" in updates and updates["items"] is not None:
+        updates["items"] = [
+            it.model_copy(update={"name": sanitize_prompt_input(it.name, max_len=240) or "Hàng hóa"})
+            for it in (payload.items or [])
+        ]
 
     changes: list[str] = []
     if "amount_vnd" in updates and updates["amount_vnd"] != tx.amount_vnd:
@@ -162,6 +179,14 @@ async def patch_transaction(
         changes.append(f"Ngày: {tx.date} → {updates['date']}")
     if "type" in updates and updates["type"] != tx.type:
         changes.append(f"Loại: {tx.type} → {updates['type']}")
+    if "category" in updates and updates["category"] != tx.category:
+        changes.append(f"Danh mục: {tx.category or 'Trống'} → {updates['category'] or 'Trống'}")
+    if "tax_group" in updates and updates["tax_group"] != tx.tax_group:
+        changes.append(f"Nhóm thuế: {tx.tax_group} → {updates['tax_group']}")
+    if "tax_code" in updates and updates["tax_code"] != tx.tax_code:
+        changes.append(f"Mã số thuế: {tx.tax_code or 'Trống'} → {updates['tax_code'] or 'Trống'}")
+    if "items" in updates and updates["items"] is not None and updates["items"] != tx.items:
+        changes.append(f"Danh sách hàng hóa: {len(tx.items)} mục → {len(updates['items'])} mục")
     if "payment_method" in updates and updates["payment_method"] != tx.payment_method:
         changes.append(f"Thanh toán: {tx.payment_method} → {updates['payment_method']}")
     if "status" in updates and updates["status"] and updates["status"] != tx.status:
@@ -227,12 +252,15 @@ async def confirm_transaction(
                     merged_docs.append(doc_id)
 
             new_payment = "transfer" if tx.payment_method == "transfer" else orig_tx.payment_method
+            orig_has_unresolved = orig_tx.status == "needs_review" and any(
+                w.code in _UNRESOLVED_ORIGINAL_WARNINGS for w in orig_tx.warnings
+            )
             updated_orig = orig_tx.model_copy(
                 update={
                     "linked_document_ids": merged_docs,
                     "payment_method": new_payment,
-                    "status": "recorded",
-                    "clarification_question": None,
+                    "status": "needs_review" if orig_has_unresolved else "recorded",
+                    "clarification_question": orig_tx.clarification_question if orig_has_unresolved else None,
                     "audit_log": _append_audit(
                         orig_tx,
                         "merged",

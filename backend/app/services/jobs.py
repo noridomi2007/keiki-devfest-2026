@@ -15,6 +15,9 @@ from backend.app.repositories.memory import MemoryRepo, repo
 class JobRunner:
     """Orchestrates asynchronous Gemini Agent jobs and broadcasts real-time SSE events."""
 
+    MAX_STREAMS_PER_JOB = 10
+    MAX_KEEPALIVE_ITERATIONS = 40
+
     def __init__(self, repository: MemoryRepo) -> None:
         self.repo = repository
         self._queues: dict[str, list[asyncio.Queue[JobEventRecord | None]]] = {}
@@ -173,8 +176,21 @@ class JobRunner:
         if not job:
             return
 
+        job_queues = self._queues.setdefault(job_id, [])
+        if len(job_queues) >= self.MAX_STREAMS_PER_JOB:
+            err_payload = {
+                "job_id": job_id,
+                "seq": len(job.events) + 1,
+                "step": "error",
+                "status": "error",
+                "message": "Quá nhiều kết nối theo dõi đồng thời cho tiến trình này.",
+                "data": {"code": "TOO_MANY_STREAMS"},
+            }
+            yield f"data: {json.dumps(err_payload, ensure_ascii=False)}\n\n"
+            return
+
         q: asyncio.Queue[JobEventRecord | None] = asyncio.Queue()
-        self._queues.setdefault(job_id, []).append(q)
+        job_queues.append(q)
 
         try:
             sent_seqs: set[int] = set()
@@ -185,7 +201,8 @@ class JobRunner:
             if job.status in ("done", "error"):
                 return
 
-            while True:
+            keepalive_count = 0
+            while keepalive_count < self.MAX_KEEPALIVE_ITERATIONS:
                 try:
                     ev = await asyncio.wait_for(q.get(), timeout=15.0)
                     if ev is None:
@@ -196,10 +213,13 @@ class JobRunner:
                     if ev.step in ("done", "error"):
                         break
                 except asyncio.TimeoutError:
+                    keepalive_count += 1
                     yield ": keep-alive\n\n"
         finally:
             if job_id in self._queues and q in self._queues[job_id]:
                 self._queues[job_id].remove(q)
+                if not self._queues[job_id] and job.status in ("done", "error"):
+                    self._queues.pop(job_id, None)
 
 
 job_runner = JobRunner(repo)

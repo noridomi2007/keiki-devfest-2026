@@ -300,6 +300,12 @@ async def login_with_google(
     user_name = ""
     user_picture = ""
     expected_cid = (settings.google_client_id or os.environ.get("GOOGLE_CLIENT_ID", "")).strip()
+    if not expected_cid:
+        raise ApiError(
+            status_code=401,
+            code="GOOGLE_CLIENT_ID_NOT_CONFIGURED",
+            message="Hệ thống chưa cấu hình GOOGLE_CLIENT_ID để đối chiếu chữ ký aud.",
+        )
 
     if payload.access_token:
         async with httpx.AsyncClient(timeout=8.0, follow_redirects=False) as client:

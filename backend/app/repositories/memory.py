@@ -7,8 +7,9 @@ from pathlib import Path
 from typing import Any
 from agent.normalize import normalize_text
 from agent.schemas import PricePoint, TaxCodeInfo, Transaction
-from backend.app.core.security import set_household_token_version
+from backend.app.core.security import get_household_token_version, set_household_token_version
 from backend.app.models import DocumentRecord, JobRecord
+from backend.app.services.storage import storage_service
 
 
 AGENT_DATA_DIR = Path(__file__).resolve().parent.parent.parent.parent / "agent" / "data"
@@ -76,11 +77,36 @@ class MemoryRepo:
             return
         if self._firestore_db is not None:
             try:
-                doc_snap = self._firestore_db.collection("keiki_state").document("runtime_snapshot").get()
+                col = self._firestore_db.collection("keiki_state")
+                doc_snap = col.document("runtime_snapshot").get()
                 if doc_snap.exists:
                     payload = doc_snap.to_dict() or {}
-                    self._apply_snapshot_payload(payload)
-                    return
+                    if not payload.get("split_mode"):
+                        self._apply_snapshot_payload(payload)
+                        return
+                meta_snap = col.document("meta_snapshot").get()
+                if meta_snap.exists:
+                    meta_payload = meta_snap.to_dict() or {}
+                    if meta_payload.get("split_mode"):
+                        txs_merged: dict[str, Any] = {}
+                        for idx in range(int(meta_payload.get("tx_chunk_count", 0))):
+                            c_snap = col.document(f"tx_chunk_{idx}").get()
+                            if c_snap.exists:
+                                txs_merged.update((c_snap.to_dict() or {}).get("items") or {})
+                        docs_merged: dict[str, Any] = {}
+                        for idx in range(int(meta_payload.get("doc_chunk_count", 0))):
+                            c_snap = col.document(f"doc_chunk_{idx}").get()
+                            if c_snap.exists:
+                                docs_merged.update((c_snap.to_dict() or {}).get("items") or {})
+                        full_payload = {
+                            "households": meta_payload.get("households") or {},
+                            "users": meta_payload.get("users") or {},
+                            "locked_periods": meta_payload.get("locked_periods") or {},
+                            "transactions": txs_merged,
+                            "documents": docs_merged,
+                        }
+                        self._apply_snapshot_payload(full_payload)
+                        return
             except Exception:
                 pass
         if not STATE_FILE.exists():
@@ -93,13 +119,24 @@ class MemoryRepo:
 
     def _apply_snapshot_payload(self, payload: dict[str, Any]) -> None:
         for hid, hh in (payload.get("households") or {}).items():
-            self.households[str(hid)] = dict(hh)
+            hh_dict = dict(hh)
+            self.households[str(hid)] = hh_dict
+            if hh_dict.get("token_version"):
+                try:
+                    ver = int(hh_dict["token_version"])
+                    if ver > get_household_token_version(str(hid)):
+                        set_household_token_version(str(hid), ver)
+                except Exception:
+                    pass
         for phone, usr in (payload.get("users") or {}).items():
             usr_dict = dict(usr)
             self.users[str(phone)] = usr_dict
             if usr_dict.get("household_id") and usr_dict.get("token_version"):
                 try:
-                    set_household_token_version(str(usr_dict["household_id"]), int(usr_dict["token_version"]))
+                    hid_str = str(usr_dict["household_id"])
+                    ver = int(usr_dict["token_version"])
+                    if ver > get_household_token_version(hid_str):
+                        set_household_token_version(hid_str, ver)
                 except Exception:
                     pass
         for doc_id, doc_raw in (payload.get("documents") or {}).items():
@@ -109,31 +146,77 @@ class MemoryRepo:
         for lock_key, lock_info in (payload.get("locked_periods") or {}).items():
             self.locked_periods[str(lock_key)] = dict(lock_info)
 
+    @staticmethod
+    def _chunk_dict_by_bytes(data_dict: dict[str, Any], max_bytes: int = 650_000) -> list[dict[str, Any]]:
+        chunks: list[dict[str, Any]] = []
+        current: dict[str, Any] = {}
+        current_bytes = 2
+        for k, v in data_dict.items():
+            entry_bytes = len(json.dumps({k: v}, ensure_ascii=False).encode("utf-8"))
+            if current and current_bytes + entry_bytes > max_bytes:
+                chunks.append(current)
+                current = {}
+                current_bytes = 2
+            current[k] = v
+            current_bytes += entry_bytes
+        if current:
+            chunks.append(current)
+        return chunks
+
     def _save_snapshot(self) -> None:
         if not self._persistence_enabled:
             return
+        households_snap = {
+            hid: (
+                {**hh, "token_version": str(get_household_token_version(hid))}
+                if get_household_token_version(hid) > 1 or "token_version" in hh
+                else dict(hh)
+            )
+            for hid, hh in self.households.items()
+        }
+        users_snap = {}
+        for phone, usr in self.users.items():
+            u_copy = dict(usr)
+            hid_str = str(u_copy.get("household_id") or "")
+            if hid_str and (get_household_token_version(hid_str) > 1 or "token_version" in u_copy):
+                u_copy["token_version"] = str(
+                    max(int(u_copy.get("token_version") or 1), get_household_token_version(hid_str))
+                )
+            users_snap[phone] = u_copy
+
+        docs_snap = {k: v.model_dump() for k, v in self.documents.items()}
+        txs_snap = {k: v.model_dump() for k, v in self.transactions.items()}
         payload = {
-            "households": self.households,
-            "users": self.users,
-            "documents": {k: v.model_dump() for k, v in self.documents.items()},
-            "transactions": {k: v.model_dump() for k, v in self.transactions.items()},
+            "households": households_snap,
+            "users": users_snap,
+            "documents": docs_snap,
+            "transactions": txs_snap,
             "locked_periods": self.locked_periods,
         }
         serialized = json.dumps(payload, ensure_ascii=False)
         if self._firestore_db is not None:
             try:
+                col = self._firestore_db.collection("keiki_state")
                 if len(serialized.encode("utf-8")) < 950_000:
-                    self._firestore_db.collection("keiki_state").document("runtime_snapshot").set(payload)
+                    col.document("runtime_snapshot").set(payload)
                 else:
-                    # Split by collection to avoid Firestore 1 MiB single-document limit
-                    col = self._firestore_db.collection("keiki_state")
+                    tx_chunks = self._chunk_dict_by_bytes(txs_snap)
+                    doc_chunks = self._chunk_dict_by_bytes(docs_snap)
+                    for idx, chunk in enumerate(tx_chunks):
+                        col.document(f"tx_chunk_{idx}").set({"items": chunk})
+                    for idx, chunk in enumerate(doc_chunks):
+                        col.document(f"doc_chunk_{idx}").set({"items": chunk})
                     col.document("meta_snapshot").set(
                         {
-                            "households": self.households,
-                            "users": self.users,
+                            "split_mode": True,
+                            "tx_chunk_count": len(tx_chunks),
+                            "doc_chunk_count": len(doc_chunks),
+                            "households": households_snap,
+                            "users": users_snap,
                             "locked_periods": self.locked_periods,
                         }
                     )
+                    col.document("runtime_snapshot").set({"split_mode": True, "meta_doc": "meta_snapshot"})
             except Exception:
                 pass
         try:
@@ -154,15 +237,19 @@ class MemoryRepo:
             pass
 
     @staticmethod
-    def _evict_oldest_if_full(store: dict, max_items: int, protected_keys: set[str] | None = None) -> None:
+    def _evict_oldest_if_full(store: dict, max_items: int, protected_keys: set[str] | None = None) -> list[Any]:
+        evicted: list[Any] = []
         if len(store) < max_items:
-            return
+            return evicted
         for k in list(store.keys()):
             if protected_keys and k in protected_keys:
                 continue
-            store.pop(k, None)
+            val = store.pop(k, None)
+            if val is not None:
+                evicted.append(val)
             if len(store) < max_items:
                 break
+        return evicted
 
     def _active_household_ids(self) -> set[str]:
         active = {t.household_id for t in self.transactions.values() if t.household_id}
@@ -314,10 +401,13 @@ class MemoryRepo:
         counterparty_norm: str | None = None,
         limit: int = 10,
     ) -> list[PricePoint]:
+        clean_item = (item_norm or "").strip()
+        if len(clean_item) < 2:
+            return []
         pts: list[PricePoint] = [
             p
             for p in self.price_points
-            if item_norm in p.item_norm or p.item_norm in item_norm
+            if len(p.item_norm) >= 2 and (clean_item in p.item_norm or p.item_norm in clean_item)
         ]
         if household_id:
             for tx in self.transactions.values():
@@ -326,7 +416,11 @@ class MemoryRepo:
                 tx_cp_norm = normalize_text(tx.counterparty) or None
                 for it in tx.items:
                     it_norm = normalize_text(it.name)
-                    if it_norm and it.unit_price_vnd > 0 and (item_norm in it_norm or it_norm in item_norm):
+                    if (
+                        len(it_norm) >= 2
+                        and it.unit_price_vnd > 0
+                        and (clean_item in it_norm or it_norm in clean_item)
+                    ):
                         pts.append(
                             PricePoint(
                                 item_norm=it_norm,
@@ -351,15 +445,27 @@ class MemoryRepo:
     # CRUD methods for Backend Routers
     def save_document(self, doc: DocumentRecord) -> DocumentRecord:
         if doc.id not in self.documents:
+            evicted_docs: list[DocumentRecord] = []
             if doc.household_id:
                 hh_docs = [k for k, d in self.documents.items() if d.household_id == doc.household_id]
                 while len(hh_docs) >= self.MAX_DOCUMENTS_PER_HOUSEHOLD:
                     oldest_hh_doc = hh_docs.pop(0)
-                    self.documents.pop(oldest_hh_doc, None)
+                    ev = self.documents.pop(oldest_hh_doc, None)
+                    if ev is not None:
+                        evicted_docs.append(ev)
             other_tenant_docs = {
                 k for k, d in self.documents.items() if d.household_id and d.household_id != doc.household_id
             }
-            self._evict_oldest_if_full(self.documents, self.MAX_DOCUMENTS, protected_keys=other_tenant_docs)
+            for ev in self._evict_oldest_if_full(
+                self.documents, self.MAX_DOCUMENTS, protected_keys=other_tenant_docs
+            ):
+                if isinstance(ev, DocumentRecord):
+                    evicted_docs.append(ev)
+            for ev in evicted_docs:
+                if ev.storage_path and not any(
+                    d.storage_path == ev.storage_path for d in self.documents.values()
+                ):
+                    storage_service.delete_bytes(ev.storage_path)
         self.documents[doc.id] = doc
         self._save_snapshot()
         return doc

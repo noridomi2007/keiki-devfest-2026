@@ -63,6 +63,7 @@ _MAX_REVOKED_JTIS = 5000
 _REVOKED_JTIS: dict[str, int] = {}
 
 # Per-household minimum valid token version (invalidates all older tokens upon password change)
+_MAX_HOUSEHOLD_TOKEN_VERSIONS = 50000
 _HOUSEHOLD_TOKEN_VERSIONS: dict[str, int] = {}
 
 
@@ -72,9 +73,13 @@ def bump_household_token_version(household_id: str, min_version: int | None = No
         return 1
     current = _HOUSEHOLD_TOKEN_VERSIONS.get(household_id, 1)
     next_ver = max(current + 1, min_version or (current + 1))
-    if len(_HOUSEHOLD_TOKEN_VERSIONS) > 5000 and household_id not in _HOUSEHOLD_TOKEN_VERSIONS:
-        oldest_key = next(iter(_HOUSEHOLD_TOKEN_VERSIONS))
-        _HOUSEHOLD_TOKEN_VERSIONS.pop(oldest_key, None)
+    if (
+        len(_HOUSEHOLD_TOKEN_VERSIONS) >= _MAX_HOUSEHOLD_TOKEN_VERSIONS
+        and household_id not in _HOUSEHOLD_TOKEN_VERSIONS
+    ):
+        evictable = [k for k, v in _HOUSEHOLD_TOKEN_VERSIONS.items() if v <= 1]
+        for k in evictable[: max(1, len(_HOUSEHOLD_TOKEN_VERSIONS) - _MAX_HOUSEHOLD_TOKEN_VERSIONS + 1)]:
+            _HOUSEHOLD_TOKEN_VERSIONS.pop(k, None)
     _HOUSEHOLD_TOKEN_VERSIONS[household_id] = next_ver
     return next_ver
 
@@ -105,9 +110,11 @@ def _cleanup_revoked_jtis() -> None:
         expired = [k for k, exp in _REVOKED_JTIS.items() if exp < now]
         for k in expired:
             _REVOKED_JTIS.pop(k, None)
-    while len(_REVOKED_JTIS) >= _MAX_REVOKED_JTIS:
-        oldest_jti = next(iter(_REVOKED_JTIS))
-        _REVOKED_JTIS.pop(oldest_jti, None)
+    if len(_REVOKED_JTIS) >= _MAX_REVOKED_JTIS:
+        excess = len(_REVOKED_JTIS) - _MAX_REVOKED_JTIS + 1
+        soonest_expiring = sorted(_REVOKED_JTIS.items(), key=lambda kv: kv[1])[:excess]
+        for k, _ in soonest_expiring:
+            _REVOKED_JTIS.pop(k, None)
 
 
 def create_session_token(
@@ -242,6 +249,12 @@ async def require_session(request: Request) -> dict[str, Any]:
     return session
 
 
+def is_loopback_request(request: Request) -> bool:
+    """Check whether the resolved client IP is a local loopback address."""
+    client_ip = _get_client_ip(request).strip().lower()
+    return client_ip in {"127.0.0.1", "::1", "::ffff:127.0.0.1", "localhost", "testclient"}
+
+
 def _has_valid_admin_token(request: Request) -> bool:
     provided_admin = request.headers.get("x-admin-token", "").strip()
     return bool(
@@ -260,11 +273,11 @@ async def require_secret_mutation_permission(
     - On Google Cloud Run (`is_cloud_run=True`) or when `ADMIN_TOKEN` is configured,
       ALWAYS require X-Admin-Token so public visitors cannot wipe or overwrite secrets.
     - On local development (`is_cloud_run=False` and no `ADMIN_TOKEN` configured),
-      allow authenticated users to configure their local Gemini API key.
+      only allow authenticated loopback requests to configure local keys (blocks LAN/Tunnel visitors).
     """
     if _has_valid_admin_token(request):
         return active_session
-    if not settings.is_cloud_run and not settings.admin_token:
+    if not settings.is_cloud_run and not settings.admin_token and is_loopback_request(request):
         return active_session
     raise ApiError(
         status_code=403,
@@ -275,8 +288,8 @@ async def require_secret_mutation_permission(
 
 async def require_google_client_id_permission(request: Request) -> dict[str, Any]:
     """
-    Require either a valid X-Admin-Token or an authenticated local developer session
-    before allowing GOOGLE_CLIENT_ID mutation (blocks unauthenticated overwrites).
+    Require either a valid X-Admin-Token or an authenticated local loopback session
+    before allowing GOOGLE_CLIENT_ID mutation (blocks unauthenticated & LAN/Tunnel overwrites).
     """
     session = get_optional_session(request)
     if _has_valid_admin_token(request):
@@ -287,7 +300,7 @@ async def require_google_client_id_permission(request: Request) -> dict[str, Any
             code="UNAUTHORIZED",
             message="Phiên đăng nhập chưa được xác thực hoặc đã hết hạn. Vui lòng đăng nhập lại.",
         )
-    if not settings.is_cloud_run and not settings.admin_token:
+    if not settings.is_cloud_run and not settings.admin_token and is_loopback_request(request):
         return session
     raise ApiError(
         status_code=403,
@@ -406,28 +419,33 @@ class SlidingWindowRateLimiter:
 
     def __init__(self) -> None:
         self._buckets: dict[str, deque[float]] = {}
+        self._bucket_windows: dict[str, float] = {}
         self._last_cleanup: float = time.monotonic()
 
     def reset(self) -> None:
         self._buckets.clear()
+        self._bucket_windows.clear()
 
     def check(self, key: str, limit: int, window_seconds: float = 60.0) -> tuple[bool, int, int]:
         """Returns (allowed, remaining_quota, retry_after_seconds)."""
         now = time.monotonic()
 
         if now - self._last_cleanup > 120.0 or len(self._buckets) > 5000:
-            cutoff = now - window_seconds
             stale_keys = [
-                k for k, q in self._buckets.items() if not q or q[-1] < cutoff
+                k
+                for k, q in self._buckets.items()
+                if not q or q[-1] < (now - self._bucket_windows.get(k, window_seconds))
             ]
             for k in stale_keys:
                 self._buckets.pop(k, None)
+                self._bucket_windows.pop(k, None)
             self._last_cleanup = now
 
         q = self._buckets.get(key)
         if q is None:
             q = deque()
             self._buckets[key] = q
+        self._bucket_windows[key] = max(self._bucket_windows.get(key, 0.0), float(window_seconds))
 
         cutoff = now - window_seconds
         while q and q[0] <= cutoff:
@@ -463,6 +481,7 @@ class SlidingWindowRateLimiter:
         if q is None:
             q = deque()
             self._buckets[key] = q
+        self._bucket_windows[key] = max(self._bucket_windows.get(key, 0.0), float(window_seconds))
         while q and q[0] <= cutoff:
             q.popleft()
         q.append(now)
@@ -471,6 +490,7 @@ class SlidingWindowRateLimiter:
     def clear_key(self, key: str) -> None:
         """Reset bucket for a specific key (e.g. after successful login)."""
         self._buckets.pop(key, None)
+        self._bucket_windows.pop(key, None)
 
 
 rate_limiter = SlidingWindowRateLimiter()
@@ -518,17 +538,27 @@ def _is_trusted_csrf_request(request: Request) -> bool:
         if ctype in {"application/x-www-form-urlencoded", "text/plain"}:
             return False
         ua = request.headers.get("user-agent", "").lower()
-        if "mozilla/" in ua and fetch_site != "same-origin":
+        is_browser_ua = any(
+            tok in ua for tok in ("mozilla/", "applewebkit/", "chrome/", "safari/", "firefox/", "edg/")
+        )
+        if ctype == "multipart/form-data" and (is_browser_ua or (fetch_site and fetch_site != "same-origin")):
+            return False
+        if is_browser_ua and fetch_site != "same-origin":
             return False
         return True
     if source_origin == "null":
         return False
 
-    host_hdr = (
-        request.headers.get("x-forwarded-host", "").split(",")[0].strip().lower()
-        if settings.trust_proxy_headers
-        else ""
-    ) or request.headers.get("host", "").strip().lower()
+    host_hdr = ""
+    if settings.trust_proxy_headers:
+        xfh_raw = request.headers.get("x-forwarded-host", "")
+        if xfh_raw:
+            xfh_parts = [p.strip().lower() for p in xfh_raw.split(",") if p.strip()]
+            if xfh_parts:
+                idx = max(0, len(xfh_parts) - settings.trusted_proxy_hops)
+                host_hdr = xfh_parts[idx]
+    if not host_hdr:
+        host_hdr = request.headers.get("host", "").strip().lower()
     if not host_hdr and request.url.netloc:
         host_hdr = request.url.netloc.lower()
 

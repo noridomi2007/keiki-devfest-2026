@@ -67,5 +67,23 @@ class StorageService:
             message="Không tìm thấy tệp chứng từ gốc.",
         )
 
+    def delete_bytes(self, storage_path: str) -> None:
+        """Safely remove an orphaned file from local storage and GCS (if configured)."""
+        if not storage_path:
+            return
+        local_file = self._safe_local_path(storage_path)
+        try:
+            if local_file.exists() and local_file.is_file():
+                local_file.unlink(missing_ok=True)
+        except Exception:
+            pass
+        if self._gcs_bucket is not None:
+            try:
+                blob = self._gcs_bucket.blob(storage_path)
+                if blob.exists():
+                    blob.delete()
+            except Exception:
+                pass
+
 
 storage_service = StorageService()
