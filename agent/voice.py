@@ -85,9 +85,10 @@ def _parse_vietnamese_transcript(transcript: str) -> ExtractionResult:
 async def extract_from_voice(doc: DocumentRef, settings: AgentSettings) -> ExtractionResult:
     """Process Vietnamese audio recording or spoken text command via Google Gemini Multimodal API."""
     from datetime import date
-    from agent.client import create_gemini_client, resolve_gemini_api_key
+    from agent.client import create_gemini_client, resolve_gemini_api_key, resolve_gemini_model
 
     api_key = resolve_gemini_api_key(settings.gemini_api_key)
+    model_name = resolve_gemini_model(settings.gemini_model)
     today_iso = date.today().isoformat()
     prompt_path = PROMPTS_DIR / "extract_voice.vi.md"
     base_prompt = (
@@ -106,7 +107,7 @@ async def extract_from_voice(doc: DocumentRef, settings: AgentSettings) -> Extra
                 client = create_gemini_client(api_key)
                 resp = await asyncio.to_thread(
                     client.models.generate_content,
-                    model=settings.gemini_model or "gemini-2.5-flash",
+                    model=model_name,
                     contents=[
                         f"{prompt_with_date}\n\nCâu nói của người dùng (gán nguyên văn vào transcript):\n\"{spoken_text}\""
                     ],
@@ -138,7 +139,7 @@ async def extract_from_voice(doc: DocumentRef, settings: AgentSettings) -> Extra
         client = create_gemini_client(api_key)
         resp = await asyncio.to_thread(
             client.models.generate_content,
-            model=settings.gemini_model or "gemini-2.5-flash",
+            model=model_name,
             contents=[
                 types.Part.from_bytes(data=doc.data, mime_type=doc.mime_type or "audio/webm"),
                 prompt_with_date,

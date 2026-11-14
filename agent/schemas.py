@@ -157,7 +157,7 @@ class AgentEvent(BaseModel):
 
 class AgentSettings(BaseModel):
     gemini_api_key: str | None = None
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.1-flash-lite"
     confidence_threshold: float = 0.85
     price_anomaly_threshold: float = 0.30
     total_tolerance_pct: float = 0.01

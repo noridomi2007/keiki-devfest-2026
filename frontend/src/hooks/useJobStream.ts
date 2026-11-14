@@ -30,7 +30,10 @@ export function useJobStream(jobId: string | null, onFinished?: (tx?: Transactio
         if (prev.some((x) => x.seq === ev.seq && x.step === ev.step)) {
           return prev;
         }
-        return [...prev, ev].sort((a, b) => a.seq - b.seq);
+        const filtered = prev.filter(
+          (x) => !(x.step === ev.step && x.status === 'running' && ev.status !== 'running')
+        );
+        return [...filtered, ev].sort((a, b) => a.seq - b.seq);
       });
 
       if (ev.step === 'done' || ev.step === 'error') {

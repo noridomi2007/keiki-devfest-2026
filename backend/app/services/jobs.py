@@ -107,6 +107,11 @@ class JobRunner:
                         message=ev.message,
                         data=ev.data,
                     )
+                    job.events = [
+                        existing
+                        for existing in job.events
+                        if not (existing.step == rec.step and existing.status == "running" and rec.status != "running")
+                    ]
                     job.events.append(rec)
                     if ev.step == "error" or ev.status == "error":
                         job.status = "error"

@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 from fastapi import APIRouter, Depends
 
-from agent.client import create_gemini_client, resolve_gemini_api_key
+from agent.client import create_gemini_client, resolve_gemini_api_key, resolve_gemini_model
 from agent.normalize import normalize_text
 from agent.schemas import AuditLogEntry
 from backend.app.config import settings
@@ -319,7 +319,7 @@ async def chat_with_agent(
             )
             resp = await asyncio.to_thread(
                 client.models.generate_content,
-                model=settings.gemini_model,
+                model=resolve_gemini_model(settings.gemini_model),
                 contents=[prompt],
             )
             if resp.text and resp.text.strip():

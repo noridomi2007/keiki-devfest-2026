@@ -28,7 +28,7 @@ async def extract_from_image(doc: DocumentRef, settings: AgentSettings) -> Extra
         if cache_path.exists():
             return ExtractionResult.model_validate_json(cache_path.read_text(encoding="utf-8"))
 
-    from agent.client import create_gemini_client, resolve_gemini_api_key
+    from agent.client import create_gemini_client, resolve_gemini_api_key, resolve_gemini_model
 
     api_key = resolve_gemini_api_key(settings.gemini_api_key)
     if not api_key:
@@ -40,11 +40,13 @@ async def extract_from_image(doc: DocumentRef, settings: AgentSettings) -> Extra
 
     prompt_text = _load_prompt("extract_receipt.vi.md")
     client = create_gemini_client(api_key)
-    for attempt in range(2):
+    primary_model = resolve_gemini_model(settings.gemini_model)
+    candidate_models = [primary_model, "gemini-3.5-flash-lite"]
+    for attempt, model_name in enumerate(candidate_models):
         try:
             resp = await asyncio.to_thread(
                 client.models.generate_content,
-                model=settings.gemini_model or "gemini-2.5-flash",
+                model=model_name,
                 contents=[
                     types.Part.from_bytes(data=doc.data, mime_type=doc.mime_type),
                     prompt_text,

@@ -55,7 +55,7 @@ class AppConfig(BaseModel):
     gcp_project: str = os.environ.get("GCP_PROJECT", "").strip()
     gcs_bucket: str = os.environ.get("GCS_BUCKET", "").strip()
     gemini_api_key: str = os.environ.get("GEMINI_API_KEY", "").strip()
-    gemini_model: str = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip()
+    gemini_model: str = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite").strip()
     google_client_id: str = os.environ.get(
         "GOOGLE_CLIENT_ID",
         "407438910099-fbr88s4baevcju84kqumkt9mkks9v60h.apps.googleusercontent.com",
@@ -75,7 +75,7 @@ class AppConfig(BaseModel):
         o.strip()
         for o in os.environ.get(
             "ALLOWED_ORIGINS",
-            "http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173",
+            "https://keiki-app-303049082320.asia-southeast1.run.app,http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173",
         ).split(",")
         if o.strip()
     ]
